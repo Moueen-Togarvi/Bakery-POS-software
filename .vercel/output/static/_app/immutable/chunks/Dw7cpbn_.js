@@ -1,0 +1,1 @@
+const e=r=>{try{return new Intl.NumberFormat("en-PK",{style:"currency",currency:"PKR",minimumFractionDigits:0,maximumFractionDigits:2}).format(typeof r=="number"?r:Number(r))}catch(t){return console.error("Currency formatting error:",t),`₨ ${(typeof r=="number"?r:Number(r)).toFixed(2)}`}};export{e as f};
