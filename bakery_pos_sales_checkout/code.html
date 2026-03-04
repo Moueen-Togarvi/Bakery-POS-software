@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Bakery POS Sales Checkout</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#ee8c2b",
+                        "background-light": "#f8f7f6",
+                        "background-dark": "#221910",
+                    },
+                    fontFamily: {
+                        "display": ["Work Sans"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Work Sans', sans-serif; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display">
+<div class="relative flex min-h-screen w-full flex-col overflow-x-hidden">
+<!-- Top Navigation Bar -->
+<header class="flex items-center justify-between border-b border-primary/10 bg-white dark:bg-background-dark px-6 py-3 sticky top-0 z-10">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-3 text-primary">
+<span class="material-symbols-outlined text-3xl">bakery_dining</span>
+<h2 class="text-slate-900 dark:text-slate-100 text-xl font-bold tracking-tight">OvenFresh POS</h2>
+</div>
+<div class="hidden md:flex items-center gap-6">
+<a class="text-primary text-sm font-semibold border-b-2 border-primary pb-1" href="#">Sales</a>
+<a class="text-slate-500 dark:text-slate-400 text-sm font-medium hover:text-primary transition-colors" href="#">Inventory</a>
+<a class="text-slate-500 dark:text-slate-400 text-sm font-medium hover:text-primary transition-colors" href="#">Reports</a>
+<a class="text-slate-500 dark:text-slate-400 text-sm font-medium hover:text-primary transition-colors" href="#">Settings</a>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
+<input class="pl-10 pr-4 py-2 bg-primary/5 border-none rounded-lg text-sm w-64 focus:ring-2 focus:ring-primary/50 transition-all" placeholder="Search products..." type="text"/>
+</div>
+<button class="p-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<div class="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden border-2 border-primary/20">
+<img alt="User" class="h-full w-full object-cover" data-alt="Portrait of a bakery shop manager" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBy8nfPz6LsQBGflj2RFwcN-6L7WaF0-otxeZsCEpynRT0Re9SHZXKtirfhGRG0RE5Ex-IRvbdMVkRz5bUYCw4gb7XS3QDRttswaEsokXSHy6fkBP150Srb5am51Y5SkD5291aJtXVGEd3TlZOa2knkIJomSejvtZ02M1Gjc7qv3NJe2YlmGK8EDeyKEF1G97eHxPlvx0G-ix6f3r2aVqtzU3QwW4rlnUmRYIbiySV7Pc3h8Gg4FnpJmEH87eeT7AYnnSAjKYHC0MeJ"/>
+</div>
+</div>
+</header>
+<main class="flex flex-1 overflow-hidden h-[calc(100vh-64px)]">
+<!-- Left Side: Product Grid -->
+<div class="flex-1 flex flex-col bg-white dark:bg-background-dark/50">
+<!-- Categories -->
+<div class="flex gap-4 p-4 border-b border-primary/5 overflow-x-auto no-scrollbar">
+<button class="px-6 py-2 bg-primary text-white rounded-full text-sm font-semibold whitespace-nowrap">All Items</button>
+<button class="px-6 py-2 bg-primary/10 text-slate-700 dark:text-slate-300 rounded-full text-sm font-semibold whitespace-nowrap hover:bg-primary/20 transition-colors">Breads</button>
+<button class="px-6 py-2 bg-primary/10 text-slate-700 dark:text-slate-300 rounded-full text-sm font-semibold whitespace-nowrap hover:bg-primary/20 transition-colors">Pastries</button>
+<button class="px-6 py-2 bg-primary/10 text-slate-700 dark:text-slate-300 rounded-full text-sm font-semibold whitespace-nowrap hover:bg-primary/20 transition-colors">Cakes</button>
+<button class="px-6 py-2 bg-primary/10 text-slate-700 dark:text-slate-300 rounded-full text-sm font-semibold whitespace-nowrap hover:bg-primary/20 transition-colors">Beverages</button>
+<button class="px-6 py-2 bg-primary/10 text-slate-700 dark:text-slate-300 rounded-full text-sm font-semibold whitespace-nowrap hover:bg-primary/20 transition-colors">Sandwiches</button>
+</div>
+<!-- Grid -->
+<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 p-6 overflow-y-auto no-scrollbar">
+<!-- Product Card -->
+<div class="flex flex-col bg-white dark:bg-background-dark border border-primary/10 rounded-xl overflow-hidden shadow-sm hover:shadow-md hover:border-primary/30 transition-all cursor-pointer group">
+<div class="aspect-square relative overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" data-alt="Freshly baked butter croissants" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBp1CA5HsKZlq3ro8Sb1p0FfOskyCUsBsV1LGKaOb0NyKSK1VhsxRj7H9xR4EWsmuTyr0p5r9LHgzXkKwQKlgAIuKdBllS-IFG5EptYpWLHyt-6AxV3VuhLPKps8Q24qeVIygCjcAqwuMQIz71IkSyz5G5V-vN6lwc6Xx0esWB7vI905qonX5EsFBGUxako6MSg6pq3xl-wAvnCFWMdtCIUoN0jt1_jxDaxMj6xVC2jqniA7AwJ6obKfGmb_DWeLJuMrQ3_c2rIsyKH"/>
+</div>
+<div class="p-3">
+<h3 class="font-semibold text-slate-800 dark:text-slate-200">Butter Croissant</h3>
+<p class="text-primary font-bold mt-1">$3.50</p>
+</div>
+</div>
+<div class="flex flex-col bg-white dark:bg-background-dark border border-primary/10 rounded-xl overflow-hidden shadow-sm hover:shadow-md hover:border-primary/30 transition-all cursor-pointer group">
+<div class="aspect-square relative overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" data-alt="Delicious chocolate fudge cake slice" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDqx6LTtqasWpNCcdh1avUsMr-v4tC9grpsu6a88rA-EhwougCh3jiFm4p9x8aukH233yw3DjSTrU0SUceMVxiv0JQUHii7qC2uiXfjE_UxUdyOGoEW6RQSqYDfS9pE440lRGHDcgvn_QyxlootOhTX9du_BWKAJeKamBFax6qhIMHSKdE8n4RPcQIdC_hMDAgWUcQeS8Fv0zw7Ou8sZYaDAoLidT4wa2uN4eNtSD8cLvdWKw5fHAB0YNrmStld5iZGldlz-2WDKTKJ"/>
+</div>
+<div class="p-3">
+<h3 class="font-semibold text-slate-800 dark:text-slate-200">Chocolate Cake</h3>
+<p class="text-primary font-bold mt-1">$5.50</p>
+</div>
+</div>
+<div class="flex flex-col bg-white dark:bg-background-dark border border-primary/10 rounded-xl overflow-hidden shadow-sm hover:shadow-md hover:border-primary/30 transition-all cursor-pointer group">
+<div class="aspect-square relative overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" data-alt="Artisanal sourdough bread loaf" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCuUHGqh88Vnrt0Fz9Di91m99EZQN5Mh1pZ_A1uCIEFJDw1lP0LX6QDb1_FreKXXVrGZnw_Rh9Dthm92vhc79FFi_22UBc4yYo0yvaKnElNyAIUtHxFZ5QiVFKCwoI34hi1SfVQI72J2c2xvYRGjMG9Qi4b9E6jNIRsiTex3Miga1HQvcLpTOKdiYCSUvO9c0mX9Vil-AQoTUA6kbprX39grg1_pgFirpTAfsXbTlPndBQbq_W4b2lFW9nSS328drhyMwSi2THSsbhY"/>
+</div>
+<div class="p-3">
+<h3 class="font-semibold text-slate-800 dark:text-slate-200">Sourdough Loaf</h3>
+<p class="text-primary font-bold mt-1">$7.00</p>
+</div>
+</div>
+<div class="flex flex-col bg-white dark:bg-background-dark border border-primary/10 rounded-xl overflow-hidden shadow-sm hover:shadow-md hover:border-primary/30 transition-all cursor-pointer group">
+<div class="aspect-square relative overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" data-alt="Blueberry muffin with crumble topping" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCeY8o0TWcBRLu7SufcDrhGMdaB4SuCtAEnUs6pxzYx1oZrQcow2Dewelb6CECiAnQgG3FPZdY06EfGt1e8nDmMuIARcXLEy0rlUErJLLziDb1dUTudALHTHuJL3yxwhasYDkPpT2y78NJ9gzHLDHpKqdkPBQX7CBoCM7_kr1OSA8T7bWLkwmT_pV-0DwQtUBqKfUYNGzUEl8uzrKDzVDtzDsFtWN9qzcFhnf_b6mae6E5Bh3zvrapriV5GCKFUtDdF-OeevS-pcghH"/>
+</div>
+<div class="p-3">
+<h3 class="font-semibold text-slate-800 dark:text-slate-200">Blueberry Muffin</h3>
+<p class="text-primary font-bold mt-1">$3.25</p>
+</div>
+</div>
+<div class="flex flex-col bg-white dark:bg-background-dark border border-primary/10 rounded-xl overflow-hidden shadow-sm hover:shadow-md hover:border-primary/30 transition-all cursor-pointer group">
+<div class="aspect-square relative overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" data-alt="French baguette bread" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCUDcPDX99bjqvzbAeW8AnH_6PAaUPfNiNmz5UFsnCkwnkpXry2d_8X2JQUTgXlTZ0brR9GqKfBOF3EN05nn4WJFmsxuaMGQKQblthFIwgLksOOpE9y7EHr9cQAZ50WnsgekcaFmtDJzczHx8mO3YXK0EuvGkfOK5rSn01NQ-AKD2MFg-P4BhbSAXEjjg0R2RUo7B-823aT0XrmcBAGLqte6dg2out4S4fDqJHVwYt5T7j0TB657Vs-IQkFeLd2oh1anvsjLORgZT3g"/>
+</div>
+<div class="p-3">
+<h3 class="font-semibold text-slate-800 dark:text-slate-200">French Baguette</h3>
+<p class="text-primary font-bold mt-1">$2.75</p>
+</div>
+</div>
+<div class="flex flex-col bg-white dark:bg-background-dark border border-primary/10 rounded-xl overflow-hidden shadow-sm hover:shadow-md hover:border-primary/30 transition-all cursor-pointer group">
+<div class="aspect-square relative overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" data-alt="Macarons assorted colors" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBDEhYrRN9wgFtGXiMmug5TZLh-sGFcUIRDZbIivBOct-EUbfY7BUnAHypRSUgfqcY34l5y1TlbDqtAAg0xpkeGNU65rpKGXpF53tguosAKaDx-_qtz9Y1nf0KdQBFPzfXNbu-TOMOSVxlWLkN3lOh5HwJi5r-K4iZTD8UQy0vtZ8ySbyJWjEs8VWc3u9bL1Exk7hZzX7jk9C-q_qLQwZvx8vQ9tPZ2oQyZkopEiJkSG7APceIeJU91kVQbL2Xr7s39KUL5sDk9HaqH"/>
+</div>
+<div class="p-3">
+<h3 class="font-semibold text-slate-800 dark:text-slate-200">Macarons (Box of 6)</h3>
+<p class="text-primary font-bold mt-1">$12.00</p>
+</div>
+</div>
+<div class="flex flex-col bg-white dark:bg-background-dark border border-primary/10 rounded-xl overflow-hidden shadow-sm hover:shadow-md hover:border-primary/30 transition-all cursor-pointer group">
+<div class="aspect-square relative overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" data-alt="Freshly brewed latte coffee" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC-QHfl2pprwWqsx8p5TU4ckhlZEh6YMGhMxVQBTH6dfN0dpFnWAfn2SaFsbEE8n_eNrTl1YSMVT1iOpVnVrlIB6sJu2gmwI4BUIGcmCoGxowEbBIXKxCUCPaO0Gb3hGpObw37aUHeLfpdn72Q3RdMbWI6Okn3yfOx0ycw-nXMd3NtLIih8hQ54I2yuNMbtH8DUTUku2kZikKRv7huAqs3CKh-kZ6uOVsh3DGpYKVMIexXHB_OTo-m2meNg7R3HZa5-Pj4A9wr9xNbv"/>
+</div>
+<div class="p-3">
+<h3 class="font-semibold text-slate-800 dark:text-slate-200">Caffè Latte</h3>
+<p class="text-primary font-bold mt-1">$4.25</p>
+</div>
+</div>
+<div class="flex flex-col bg-white dark:bg-background-dark border border-primary/10 rounded-xl overflow-hidden shadow-sm hover:shadow-md hover:border-primary/30 transition-all cursor-pointer group">
+<div class="aspect-square relative overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" data-alt="Cinnamon roll with glaze" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBm0ZTPGOplx7_dGB5YNv_8TshQkMSwiZZkWGMjlnp5-zkrngqPxWpZOhiIA4hyS_PGhcJAPJHn8MqFISVSLW9iqfFJkpre_EL5OfIFdmqcwvD3Gm02qbuI61C08cUnmMlBJaZ_mNt5tRvV9UYNDDJd8em1OHyqNhai0Ww1GC5ADupmzBcUQcjViM3QYHSi1IZkd1TuNzQxt8qcYi3LBwRQiEfX4il5qEr8g9tTjG9eomuvkvby_ua0La1LZA6TvwCXWmHancZEZIbb"/>
+</div>
+<div class="p-3">
+<h3 class="font-semibold text-slate-800 dark:text-slate-200">Cinnamon Roll</h3>
+<p class="text-primary font-bold mt-1">$4.50</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Side: Order Summary / Cart -->
+<div class="w-full max-w-[400px] flex flex-col border-l border-primary/10 bg-white dark:bg-background-dark shadow-xl">
+<div class="p-6 border-b border-primary/5">
+<div class="flex items-center justify-between mb-2">
+<h2 class="text-xl font-bold text-slate-900 dark:text-slate-100">Current Order</h2>
+<button class="text-primary hover:text-primary/80">
+<span class="material-symbols-outlined">delete_sweep</span>
+</button>
+</div>
+<p class="text-sm text-slate-500">Order #8429 • Walk-in Customer</p>
+</div>
+<!-- Itemized List -->
+<div class="flex-1 overflow-y-auto no-scrollbar p-4 space-y-4">
+<!-- Item -->
+<div class="flex items-center gap-4 group">
+<div class="h-14 w-14 rounded-lg overflow-hidden shrink-0">
+<img class="w-full h-full object-cover" data-alt="Butter croissant" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCTqxeG0EW1uiR5-ipsTR8d7k_cAgySZQj-nif9P8wSv-tmvbSDkPf0qoMN75vycmAkeH79NPNhU2JZVjWwYEo7wCFBT9HJkZCnRE0mp-TxYOx6L8kIEDhUrZ3xCh9ELVy58ywtCl87UWl3CB88sZN4WRuCQoxkZiurRTGdH8ZUDFKOUthI09ZlbstkonUqXQor1f0n0757v5DSTIdArFITua5WRtp1eaE49qNKFcIs_wJRR7FzuwUCF_hM9DeQa5nr6TvByke4z63E"/>
+</div>
+<div class="flex-1">
+<h4 class="text-sm font-semibold text-slate-800 dark:text-slate-200">Butter Croissant</h4>
+<p class="text-xs text-slate-500">$3.50 each</p>
+</div>
+<div class="flex items-center gap-3">
+<button class="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center hover:bg-primary/20 transition-colors">
+<span class="material-symbols-outlined text-sm">remove</span>
+</button>
+<span class="text-sm font-bold w-4 text-center">2</span>
+<button class="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center hover:bg-primary/20 transition-colors">
+<span class="material-symbols-outlined text-sm">add</span>
+</button>
+</div>
+<div class="text-right min-w-[60px]">
+<p class="text-sm font-bold text-slate-800 dark:text-slate-200">$7.00</p>
+</div>
+</div>
+<!-- Item -->
+<div class="flex items-center gap-4 group">
+<div class="h-14 w-14 rounded-lg overflow-hidden shrink-0">
+<img class="w-full h-full object-cover" data-alt="Sourdough bread" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAH88LsF0_41JBdngDeBeyjoEG1IXP-6NZMnvAVjkR4sftzIhKFCeXt2vX229wwkTM5852krnC7iNYVoThqRcmrKmTefGLolQ1fgz76pFXWjOS6JfIhR9Pop9YuMLvX6gSVo58y3h1c60pDvgrV-bQN6QbL2tYoAZwIscMgR10guH7r06MdUM7E9A-x8hCLQryoEYO3EuCHV6ijW9pctzZvfSv4TQmw1c_UhFjCx0XGE6XlD-phBneP6JGSEtVsXiHLDH-GzYsvMEQr"/>
+</div>
+<div class="flex-1">
+<h4 class="text-sm font-semibold text-slate-800 dark:text-slate-200">Sourdough Loaf</h4>
+<p class="text-xs text-slate-500">$7.00 each</p>
+</div>
+<div class="flex items-center gap-3">
+<button class="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center hover:bg-primary/20 transition-colors">
+<span class="material-symbols-outlined text-sm">remove</span>
+</button>
+<span class="text-sm font-bold w-4 text-center">1</span>
+<button class="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center hover:bg-primary/20 transition-colors">
+<span class="material-symbols-outlined text-sm">add</span>
+</button>
+</div>
+<div class="text-right min-w-[60px]">
+<p class="text-sm font-bold text-slate-800 dark:text-slate-200">$7.00</p>
+</div>
+</div>
+<!-- Item -->
+<div class="flex items-center gap-4 group">
+<div class="h-14 w-14 rounded-lg overflow-hidden shrink-0">
+<img class="w-full h-full object-cover" data-alt="Caffe latte" src="https://lh3.googleusercontent.com/aida-public/AB6AXuByuf4nCVVb8IE7N2DMjQlcYp3AcowqmsHR_-p2Kb1ghfmnvJ36g0VSzoegAEEZYA_s8Y9Nz8qRPXxC4_0Z8KtLuptkGFLV_i8Bsu6ykDp61stHjB-MxsnynLDFCq1jYMQNTaVJYrND4r-2C1oVJQPPnBnmtgUBHt0gniLx6gyyIUy5FKFvITxlAvFKDCWGrU2NNabf6LzVPeXKPRZwpHA1pbHzBbP8h_909HRW2YMCxc8callJOXdl2J2u2UiDlLvJ0vuS6qRDOdSN"/>
+</div>
+<div class="flex-1">
+<h4 class="text-sm font-semibold text-slate-800 dark:text-slate-200">Caffè Latte</h4>
+<p class="text-xs text-slate-500">$4.25 each</p>
+</div>
+<div class="flex items-center gap-3">
+<button class="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center hover:bg-primary/20 transition-colors">
+<span class="material-symbols-outlined text-sm">remove</span>
+</button>
+<span class="text-sm font-bold w-4 text-center">1</span>
+<button class="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center hover:bg-primary/20 transition-colors">
+<span class="material-symbols-outlined text-sm">add</span>
+</button>
+</div>
+<div class="text-right min-w-[60px]">
+<p class="text-sm font-bold text-slate-800 dark:text-slate-200">$4.25</p>
+</div>
+</div>
+</div>
+<!-- Totals and Checkout -->
+<div class="p-6 bg-primary/5 space-y-3">
+<div class="flex justify-between text-sm">
+<span class="text-slate-500">Subtotal</span>
+<span class="font-medium text-slate-800 dark:text-slate-200">$18.25</span>
+</div>
+<div class="flex justify-between text-sm">
+<span class="text-slate-500">Tax (8%)</span>
+<span class="font-medium text-slate-800 dark:text-slate-200">$1.46</span>
+</div>
+<div class="pt-3 border-t border-primary/10 flex justify-between items-end">
+<span class="text-lg font-bold text-slate-900 dark:text-slate-100">Total</span>
+<span class="text-2xl font-black text-primary">$19.71</span>
+</div>
+<div class="grid grid-cols-2 gap-3 pt-4">
+<button class="flex items-center justify-center gap-2 py-3 border border-primary text-primary font-bold rounded-xl hover:bg-primary hover:text-white transition-all">
+<span class="material-symbols-outlined">pause</span>
+                            Hold
+                        </button>
+<button class="flex items-center justify-center gap-2 py-3 border border-primary text-primary font-bold rounded-xl hover:bg-primary hover:text-white transition-all">
+<span class="material-symbols-outlined">confirmation_number</span>
+                            Coupon
+                        </button>
+</div>
+<button class="w-full bg-primary text-white py-4 rounded-xl font-bold text-lg shadow-lg shadow-primary/30 hover:bg-primary/90 transition-all flex items-center justify-center gap-2 mt-4">
+<span class="material-symbols-outlined">payments</span>
+                        Complete Sale
+                    </button>
+</div>
+</div>
+</main>
+<!-- Footer Shortcuts -->
+<footer class="bg-white dark:bg-background-dark border-t border-primary/5 px-6 py-2 flex items-center justify-between text-xs text-slate-400">
+<div class="flex gap-4">
+<span>F1: Search</span>
+<span>F2: All Items</span>
+<span>F3: Hold Order</span>
+<span>F4: Discount</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="h-2 w-2 rounded-full bg-green-500"></div>
+<span>Terminal Online</span>
+</div>
+</footer>
+</div>
+</body></html>
