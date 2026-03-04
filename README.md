@@ -1,46 +1,77 @@
-# Bakery POS Software (SvelteKit Serverless Demo)
+# Bakery POS Software
 
-Yeh project ab pure **serverless fake-data mode** mein hai.
-Koi PostgreSQL/Neon dependency nahi hai.
+A fully database-backed Point of Sale system built with **SvelteKit** + **Neon PostgreSQL**.
 
 ## Stack
-- SvelteKit
-- Tailwind CSS
-- In-memory fake backend store (server routes)
 
-## Run
+- **Frontend**: SvelteKit + Tailwind CSS
+- **Backend**: SvelteKit Server Routes (TypeScript)
+- **Database**: [Neon](https://neon.tech) Serverless PostgreSQL (`@neondatabase/serverless`)
+
+## Setup
+
+### 1. Install dependencies
 ```bash
 npm install
+```
+
+### 2. Configure environment
+Copy `.env.example` to `.env` and set your Neon connection string:
+```env
+DATABASE_URL=postgresql://...@...neon.tech/neondb?sslmode=require
+```
+
+### 3. Seed the database (first time only)
+```bash
+npx tsx scripts/seed.ts
+```
+This will create all tables and seed categories + sample products.
+
+### 4. Run locally
+```bash
 npm run dev
 ```
 
-## Vercel Deploy
-Recommended deploy:
+## Database Schema
+
+| Table | Purpose |
+|---|---|
+| `categories` | Product categories |
+| `products` | Bakery items with price and image |
+| `cart_items` | Active cart (persistent across requests) |
+| `orders` | Completed sale records |
+| `order_items` | Line items per completed order |
+
+## API Endpoints
+
+| Method | Route | Description |
+|---|---|---|
+| GET | `/api/products?categoryId=<id>` | List products (filtered by category) |
+| GET | `/api/cart` | Get active cart |
+| POST | `/api/cart` | Add/remove item `{ productId, delta }` |
+| PATCH | `/api/cart` | Set payment method `{ paymentMethod }` |
+| DELETE | `/api/cart` | Clear cart |
+| POST | `/api/cart/complete` | Complete sale `{ paymentMethod }` |
+| GET | `/api/cart/receipt` | Get latest receipt |
+| GET | `/api/inventory` | Inventory table |
+| GET | `/api/inventory/categories` | All categories |
+| POST | `/api/inventory/categories` | Add category |
+| POST | `/api/inventory/products` | Add product |
+
+## Utility Scripts
+
+```bash
+# Verify DB data
+npx tsx scripts/check-db.ts
+
+# Re-seed products/categories
+npx tsx scripts/seed.ts
+```
+
+## Deploy
+
 ```bash
 npm run vercel:deploy
 ```
 
-Prebuilt deploy (safe flow):
-```bash
-npm run vercel:deploy:prebuilt
-```
-
-Do not run `npm run build` and then `vercel deploy --prebuilt`.
-Use `vercel build` (included in `npm run vercel:deploy:prebuilt`) so `.vercel/output` is complete.
-
-## Important
-- Data in-memory hai, restart par reset ho jata hai.
-- Inventory add/category add, cart updates, payment method, complete sale, receipt print sab fake backend par chal rahe hain.
-
-## API endpoints
-- `GET /api/products?categoryId=<id>`
-- `GET /api/cart`
-- `POST /api/cart` with `{ "productId": number, "delta": number }`
-- `PATCH /api/cart` with `{ "paymentMethod": "Cash" | "Card" | "QR" }`
-- `DELETE /api/cart`
-- `POST /api/cart/complete`
-- `GET /api/cart/receipt`
-- `GET /api/inventory`
-- `GET /api/inventory/categories`
-- `POST /api/inventory/categories`
-- `POST /api/inventory/products`
+Requires `.env` variables set in Vercel dashboard: `DATABASE_URL`.

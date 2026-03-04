@@ -1,26 +1,27 @@
 import { json } from '@sveltejs/kit';
 import { completeOpenOrder, getCartSummary } from '$lib/server/pos';
-import { completeFallbackSale } from '$lib/server/fallback-cart';
+import type { RequestHandler } from './$types';
+import type { PaymentMethod } from '$lib/server/types';
 
-export async function POST() {
+const validPaymentMethods: PaymentMethod[] = ['Cash', 'Card', 'QR'];
+
+export const POST: RequestHandler = async ({ request }) => {
+  let paymentMethod: PaymentMethod = 'Cash';
   try {
-    const receipt = await completeOpenOrder();
+    const body = await request.json().catch(() => ({}));
+    if (body.paymentMethod && validPaymentMethods.includes(body.paymentMethod)) {
+      paymentMethod = body.paymentMethod;
+    }
+  } catch {
+    // use default
+  }
+
+  try {
+    const receipt = await completeOpenOrder(paymentMethod);
     const cart = await getCartSummary();
     return json({ receipt, cart });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Sale could not be completed.';
-
-    if (message === 'Cannot complete empty order') {
-      return json({ message }, { status: 400 });
-    }
-
-    try {
-      const result = completeFallbackSale();
-      return json(result);
-    } catch (fallbackError) {
-      const fallbackMessage =
-        fallbackError instanceof Error ? fallbackError.message : 'Sale could not be completed.';
-      return json({ message: fallbackMessage }, { status: 400 });
-    }
+    return json({ message }, { status: 400 });
   }
-}
+};

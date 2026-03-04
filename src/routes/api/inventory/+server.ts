@@ -1,28 +1,14 @@
 import { json } from '@sveltejs/kit';
-import { getCategories, getProducts } from '$lib/server/pos';
-import { mockCategories, mockProducts } from '$lib/server/mock';
+import { getCategories, getInventoryRows } from '$lib/server/pos';
 
-const transformRows = (products: Awaited<ReturnType<typeof getProducts>>) =>
-  products.map((product, index) => {
-    const stock = 8 + ((product.id + index) % 25);
-    const reorderLevel = 10;
-    return {
-      id: product.id,
-      name: product.name,
-      category: product.categoryName,
-      unitPrice: Number(product.price),
-      stock,
-      reorderLevel,
-      status: stock <= reorderLevel ? 'Low' : 'Healthy'
-    };
-  });
+import type { RequestHandler } from './$types';
 
 export async function GET() {
   try {
-    const [products, categories] = await Promise.all([getProducts(), getCategories()]);
-    return json({ rows: transformRows(products), categories, dbOffline: false });
+    const [rows, categories] = await Promise.all([getInventoryRows(), getCategories()]);
+    return json({ rows, categories, dbOffline: false });
   } catch (error) {
-    console.error('Inventory API fallback:', error);
-    return json({ rows: transformRows(mockProducts), categories: mockCategories, dbOffline: true });
+    console.error('Inventory API error:', error);
+    return json({ message: 'Error loading inventory' }, { status: 500 });
   }
 }

@@ -1,25 +1,20 @@
 import { json } from '@sveltejs/kit';
 import { clearOpenOrder, getCartSummary, setOrderPaymentMethod, upsertCartItem } from '$lib/server/pos';
-import {
-  clearFallbackCart,
-  getFallbackCart,
-  setFallbackPaymentMethod,
-  upsertFallbackCartItem
-} from '$lib/server/fallback-cart';
+import type { RequestHandler } from './$types';
 import type { PaymentMethod } from '$lib/server/types';
 
 const validPaymentMethods: PaymentMethod[] = ['Cash', 'Card', 'QR'];
 
-export async function GET() {
+export const GET: RequestHandler = async () => {
   try {
     return json(await getCartSummary());
   } catch (error) {
-    console.error('Cart API fallback to mock data:', error);
-    return json(getFallbackCart());
+    console.error('Cart API error:', error);
+    return json({ message: 'Error fetching cart' }, { status: 500 });
   }
-}
+};
 
-export async function POST({ request }) {
+export const POST: RequestHandler = async ({ request }) => {
   const body = await request.json();
   const productId = Number(body.productId);
   const delta = Number(body.delta);
@@ -32,22 +27,22 @@ export async function POST({ request }) {
     await upsertCartItem(productId, delta);
     return json(await getCartSummary());
   } catch (error) {
-    console.error('Cart update fallback mode:', error);
-    return json(upsertFallbackCartItem(productId, delta));
+    console.error('Cart update error:', error);
+    return json({ message: 'Error updating cart' }, { status: 500 });
   }
-}
+};
 
-export async function DELETE() {
+export const DELETE: RequestHandler = async () => {
   try {
     await clearOpenOrder();
     return json(await getCartSummary());
   } catch (error) {
-    console.error('Cart clear fallback mode:', error);
-    return json(clearFallbackCart());
+    console.error('Cart clear error:', error);
+    return json({ message: 'Error clearing cart' }, { status: 500 });
   }
-}
+};
 
-export async function PATCH({ request }) {
+export const PATCH: RequestHandler = async ({ request }) => {
   const body = await request.json();
   const paymentMethod = body.paymentMethod as PaymentMethod;
 
@@ -59,7 +54,7 @@ export async function PATCH({ request }) {
     await setOrderPaymentMethod(paymentMethod);
     return json(await getCartSummary());
   } catch (error) {
-    console.error('Payment method fallback mode:', error);
-    return json(setFallbackPaymentMethod(paymentMethod));
+    console.error('Payment method update error:', error);
+    return json({ message: 'Error updating payment method' }, { status: 500 });
   }
-}
+};

@@ -1,9 +1,20 @@
-import type { CartSummary, PaymentMethod, SaleReceipt } from './types';
-import { mockCart, mockProducts } from './mock';
+import type { CartSummary, PaymentMethod, Product, SaleReceipt } from './types';
 
 const TAX_RATE = 0.08;
 
-const fallbackCart: CartSummary = JSON.parse(JSON.stringify(mockCart));
+const fallbackCart: CartSummary = {
+  orderId: 1,
+  orderNo: 'ORD-8429',
+  customerName: 'Walk-in Customer',
+  paymentMethod: 'Cash',
+  receiptNo: 'RCPT-ORD-8429',
+  receiptIssuedAt: new Date().toISOString(),
+  items: [],
+  subtotal: 0,
+  tax: 0,
+  total: 0
+};
+
 let fallbackOrderCounter = 8429;
 
 const round2 = (value: number) => Number(value.toFixed(2));
@@ -30,12 +41,8 @@ export function setFallbackPaymentMethod(paymentMethod: PaymentMethod) {
   return getFallbackCart();
 }
 
-export function upsertFallbackCartItem(productId: number, delta: number) {
-  const product = mockProducts.find((p) => p.id === productId);
-  if (!product) {
-    throw new Error('Product not found in fallback store');
-  }
-
+export function upsertFallbackCartItem(product: Product, delta: number) {
+  const productId = product.id;
   const unitPrice = Number(product.price);
   const idx = fallbackCart.items.findIndex((item) => item.productId === productId);
 

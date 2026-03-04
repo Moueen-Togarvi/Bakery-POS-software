@@ -11,6 +11,8 @@
     stock: number;
     reorderLevel: number;
     status: string;
+    sku: string | null;
+    unitType: string;
   };
 
   export let data: PageData;
@@ -26,6 +28,9 @@
   let productName = '';
   let productPrice = '';
   let productImage = '';
+  let productStock = '';
+  let productSku = '';
+  let productUnitType = 'pcs';
   let selectedCategoryId = categories[0]?.id ?? 1;
 
   async function refreshInventory() {
@@ -94,7 +99,10 @@
           name,
           categoryId: selectedCategoryId,
           price,
-          imageUrl: productImage
+          imageUrl: productImage,
+          stock: Number(productStock || 0),
+          sku: productSku || null,
+          unitType: productUnitType
         })
       });
       const body = await res.json();
@@ -106,6 +114,9 @@
       productName = '';
       productPrice = '';
       productImage = '';
+      productStock = '';
+      productSku = '';
+      productUnitType = 'pcs';
       infoMessage = body.dbOffline
         ? 'Product added in sample mode.'
         : 'Product added successfully.';
@@ -149,6 +160,13 @@
           {/each}
         </select>
         <input class="rounded-lg border border-primary/20 px-3 py-2" placeholder="Image URL (optional)" bind:value={productImage} />
+        <input class="rounded-lg border border-primary/20 px-3 py-2" placeholder="Initial Stock" bind:value={productStock} type="number" min="0" step="0.001" />
+        <input class="rounded-lg border border-primary/20 px-3 py-2" placeholder="Barcode / SKU" bind:value={productSku} />
+        <select class="rounded-lg border border-primary/20 px-3 py-2" bind:value={productUnitType}>
+          <option value="pcs">Pieces (pcs)</option>
+          <option value="kg">Kilograms (kg)</option>
+          <option value="lb">Pounds (lb)</option>
+        </select>
       </div>
       <button class="mt-3 rounded-lg bg-primary px-4 py-2 font-semibold text-white" on:click={addProduct} disabled={busy}>
         Add Product
@@ -184,22 +202,25 @@
       <table class="min-w-full text-left text-sm">
         <thead class="bg-primary/10 text-slate-700">
           <tr>
-            <th class="px-4 py-3">Item</th>
+            <th class="px-4 py-3">Item / SKU</th>
             <th class="px-4 py-3">Category</th>
             <th class="px-4 py-3">Unit Price</th>
             <th class="px-4 py-3">Stock</th>
-            <th class="px-4 py-3">Reorder</th>
             <th class="px-4 py-3">Status</th>
           </tr>
         </thead>
         <tbody>
           {#each rows as row}
             <tr class="border-t border-primary/5">
-              <td class="px-4 py-3 font-semibold text-slate-900">{row.name}</td>
+              <td class="px-4 py-3">
+                <div class="font-semibold text-slate-900">{row.name}</div>
+                {#if row.sku}
+                  <div class="text-xs text-slate-400">SKU: {row.sku}</div>
+                {/if}
+              </td>
               <td class="px-4 py-3 text-slate-600">{row.category}</td>
               <td class="px-4 py-3 text-slate-600">{formatCurrency(row.unitPrice)}</td>
-              <td class="px-4 py-3 text-slate-700">{row.stock}</td>
-              <td class="px-4 py-3 text-slate-700">{row.reorderLevel}</td>
+              <td class="px-4 py-3 text-slate-700">{row.stock} <span class="text-xs text-slate-400">{row.unitType}</span></td>
               <td class="px-4 py-3">
                 <span class={`rounded-full px-2 py-1 text-xs font-semibold ${row.status === 'Low' ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
                   {row.status}

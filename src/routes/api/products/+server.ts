@@ -1,8 +1,8 @@
 import { json } from '@sveltejs/kit';
 import { getProducts } from '$lib/server/pos';
-import { filterMockProducts } from '$lib/server/mock';
+import type { RequestHandler } from './$types';
 
-export async function GET({ url }) {
+export const GET: RequestHandler = async ({ url }) => {
   const categoryId = url.searchParams.get('categoryId');
   const parsed = categoryId ? Number(categoryId) : undefined;
   const category = Number.isFinite(parsed) ? parsed : undefined;
@@ -11,7 +11,7 @@ export async function GET({ url }) {
     const products = await getProducts(category);
     return json(products);
   } catch (error) {
-    console.error('Products API fallback to mock data:', error);
-    return json(filterMockProducts(category));
+    console.error('Products API error:', error);
+    return json({ message: 'Error fetching products' }, { status: 500 });
   }
-}
+};

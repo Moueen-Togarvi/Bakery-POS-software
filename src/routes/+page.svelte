@@ -16,6 +16,7 @@
       quantity: number;
       unitPrice: number;
       lineTotal: number;
+      unitType: string;
     }>;
     subtotal: number;
     tax: number;
@@ -35,9 +36,43 @@
   let uiMessage = '';
   let receipt: SaleReceipt | null = null;
   let showReceipt = false;
+  let barcodeBuffer = '';
+  let lastBarcodeTime = 0;
+  let searchQuery = '';
   const paymentMethods: PaymentMethod[] = ['Cash', 'Card', 'QR'];
 
   $: cartItemCount = cart.items.reduce((sum, item) => sum + item.quantity, 0);
+  $: filteredProducts = products.filter(p => 
+    p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    (p.sku && p.sku.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
+  function handleKeydown(event: KeyboardEvent) {
+    const now = Date.now();
+    if (now - lastBarcodeTime > 100) {
+      barcodeBuffer = '';
+    }
+    lastBarcodeTime = now;
+
+    if (event.key === 'Enter') {
+      if (barcodeBuffer.length > 3) {
+        const product = products.find(p => p.sku === barcodeBuffer);
+        if (product) {
+          updateCart(product.id, 1);
+          barcodeBuffer = '';
+        }
+      }
+      barcodeBuffer = '';
+    } else if (event.key.length === 1) {
+      barcodeBuffer += event.key;
+    }
+  }
+
+  import { onMount } from 'svelte';
+  onMount(() => {
+    window.addEventListener('keydown', handleKeydown);
+    return () => window.removeEventListener('keydown', handleKeydown);
+  });
 
   async function loadProducts(categoryId: number) {
     selectedCategoryId = categoryId;
@@ -131,7 +166,7 @@
     const lineRows = receipt.items
       .map(
         (item) =>
-          `<tr><td style="padding:6px 0;">${item.name} x${item.quantity}</td><td style="text-align:right;">${formatCurrency(item.lineTotal)}</td></tr>`
+          `<tr><td style="padding:6px 0;">${item.name} (${item.quantity} ${item.unitType})</td><td style="text-align:right;">${formatCurrency(item.lineTotal)}</td></tr>`
       )
       .join('');
 
@@ -149,7 +184,7 @@
     <table style="width:100%; border-collapse: collapse;">${lineRows}</table>
     <hr style="margin:12px 0;" />
     <p style="margin:4px 0;">Subtotal: ${formatCurrency(receipt.subtotal)}</p>
-    <p style="margin:4px 0;">Tax: ${formatCurrency(receipt.tax)}</p>
+    <p style="margin:4px 0;">Tax (8%): ${formatCurrency(receipt.tax)}</p>
     <p style="margin:4px 0; font-weight:700;">Total: ${formatCurrency(receipt.total)}</p>
   </body>
 </html>`;
@@ -195,6 +230,17 @@
       </div>
     {/if}
 
+    <div class="flex items-center gap-4 border-b border-primary/10 p-4">
+      <div class="relative flex-1">
+        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
+        <input 
+          class="w-full rounded-full border border-primary/20 bg-slate-50 py-2 pl-10 pr-4 focus:border-primary focus:bg-white focus:outline-none"
+          placeholder="Search items or scan barcode..."
+          bind:value={searchQuery}
+        />
+      </div>
+    </div>
+
     <div class="no-scrollbar flex gap-4 overflow-x-auto border-b border-primary/5 p-4">
       {#each categories as category}
         <button
@@ -214,7 +260,7 @@
       {#if productsLoading}
         <p class="col-span-full text-sm font-medium text-slate-500">Loading products...</p>
       {:else}
-        {#each products as product}
+        {#each filteredProducts as product}
           <button
             class="group flex cursor-pointer flex-col overflow-hidden rounded-xl border border-primary/10 bg-white text-left shadow-sm transition-all hover:border-primary/30 hover:shadow-md"
             on:click={() => updateCart(product.id, 1)}
@@ -267,15 +313,15 @@
           <div class="flex items-center gap-3">
             <button
               class="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary"
-              on:click={() => updateCart(item.productId, -1)}
+              on:click={() => updateCart(item.productId, item.unitType === 'pcs' ? -1 : -0.1)}
               disabled={cartLoading}
             >
               <span class="material-symbols-outlined text-sm">remove</span>
             </button>
-            <span class="w-4 text-center text-sm font-bold">{item.quantity}</span>
+            <span class="w-12 text-center text-sm font-bold">{item.quantity} {item.unitType}</span>
             <button
               class="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary"
-              on:click={() => updateCart(item.productId, 1)}
+              on:click={() => updateCart(item.productId, item.unitType === 'pcs' ? 1 : 0.1)}
               disabled={cartLoading}
             >
               <span class="material-symbols-outlined text-sm">add</span>
@@ -339,7 +385,7 @@
       <div class="mt-4 space-y-2 rounded-lg border border-primary/20 p-3 text-sm">
         {#each receipt.items as item}
           <div class="flex items-center justify-between">
-            <span>{item.name} x{item.quantity}</span>
+            <span>{item.name} ({item.quantity} {item.unitType})</span>
             <span class="font-semibold">{formatCurrency(item.lineTotal)}</span>
           </div>
         {/each}

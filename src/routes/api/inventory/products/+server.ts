@@ -1,13 +1,16 @@
 import { json } from '@sveltejs/kit';
 import { createProduct } from '$lib/server/pos';
-import { createMockProduct } from '$lib/server/mock';
+import type { RequestHandler } from './$types';
 
-export async function POST({ request }) {
+export const POST: RequestHandler = async ({ request }) => {
   const body = await request.json();
   const name = String(body.name ?? '').trim();
   const categoryId = Number(body.categoryId);
   const price = Number(body.price);
   const imageUrl = String(body.imageUrl ?? '').trim();
+  const stock = Number(body.stock ?? 0);
+  const sku = body.sku ? String(body.sku).trim() : null;
+  const unitType = String(body.unitType ?? 'pcs');
 
   if (!name) {
     return json({ message: 'Product name is required.' }, { status: 400 });
@@ -24,22 +27,14 @@ export async function POST({ request }) {
       name,
       categoryId,
       price,
-      imageUrl
+      imageUrl,
+      stock,
+      sku: sku || undefined,
+      unitType: unitType as any
     });
     return json({ product, dbOffline: false });
   } catch (error) {
-    console.error('Create product fallback:', error);
-    try {
-      const product = createMockProduct({
-        name,
-        categoryId,
-        price,
-        imageUrl
-      });
-      return json({ product, dbOffline: true });
-    } catch (fallbackError) {
-      const message = fallbackError instanceof Error ? fallbackError.message : 'Could not create product.';
-      return json({ message }, { status: 400 });
-    }
+    console.error('Create product error:', error);
+    return json({ message: 'Error creating product' }, { status: 500 });
   }
-}
+};

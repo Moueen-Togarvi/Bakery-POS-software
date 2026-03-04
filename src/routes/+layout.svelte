@@ -5,6 +5,6 @@
 </script>
 
 <div class="min-h-screen bg-background-light text-slate-900">
-  <TopNav pathname={$page.url.pathname} />
+  <TopNav pathname={$page.url.pathname} logoUrl={data.logoUrl} />
   <slot />
 </div>

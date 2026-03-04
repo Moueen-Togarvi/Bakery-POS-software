@@ -1,5 +1,7 @@
 export type PaymentMethod = 'Cash' | 'Card' | 'QR';
 
+export type UnitType = 'pcs' | 'kg' | 'lb';
+
 export type Category = {
   id: number;
   name: string;
@@ -12,15 +14,19 @@ export type Product = {
   imageUrl: string | null;
   categoryId: number;
   categoryName: string;
+  stock: number;
+  sku: string | null;
+  unitType: UnitType;
 };
 
 export type CartItem = {
   productId: number;
   name: string;
   imageUrl: string | null;
-  quantity: number;
+  quantity: number; // For pieces it's int, for kg/lb it's float
   unitPrice: number;
   lineTotal: number;
+  unitType: UnitType;
 };
 
 export type CartSummary = {
@@ -46,4 +52,25 @@ export type SaleReceipt = {
   subtotal: number;
   tax: number;
   total: number;
+};
+
+export type UserRole = 'admin' | 'cashier';
+
+export type User = {
+  id: number;
+  username: string;
+  role: UserRole;
+  salary: number;
+  joinedAt: string;
+};
+
+export type FinanceCategory = 'salary' | 'revenue' | 'expense' | 'other';
+
+export type FinanceTransaction = {
+  id: number;
+  date: string;
+  category: FinanceCategory;
+  amount: number;
+  note: string | null;
+  orderId: number | null;
 };

@@ -1,21 +1,30 @@
 <script lang="ts">
   export let pathname = '/';
+  export let logoUrl = '';
 
   const links = [
     { href: '/', label: 'Sales' },
     { href: '/inventory', label: 'Inventory' },
     { href: '/reports', label: 'Reports' },
+    { href: '/management', label: 'Management' },
     { href: '/settings', label: 'Settings' }
   ];
 
-  const isActive = (href: string) => (href === '/' ? pathname === '/' : pathname.startsWith(href));
+  const isActive = (href: string) => {
+    if (href === '/') return pathname === '/';
+    return pathname.startsWith(href);
+  };
 </script>
 
 <header class="sticky top-0 z-30 border-b border-primary/10 bg-white">
   <div class="flex flex-col gap-3 px-4 py-3 md:flex-row md:items-center md:justify-between md:px-6">
     <div class="flex items-center justify-between gap-3">
       <a class="flex items-center gap-3 text-primary" href="/">
-        <span class="material-symbols-outlined text-3xl">bakery_dining</span>
+        {#if logoUrl}
+          <img src={logoUrl} alt="Logo" class="h-10 w-10 object-contain" />
+        {:else}
+          <span class="material-symbols-outlined text-3xl">bakery_dining</span>
+        {/if}
         <h1 class="text-lg font-bold tracking-tight text-slate-900 md:text-xl">OvenFresh POS</h1>
       </a>
       <button class="rounded-lg bg-primary/10 p-2 text-primary md:hidden" aria-label="Notifications">
