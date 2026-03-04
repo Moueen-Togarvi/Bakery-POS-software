@@ -72,17 +72,20 @@
       return;
     }
     const now = Date.now();
-    if (now - lastBarcodeTime > 100) {
+    
+    // Most barcode scanners type characters very quickly.
+    // If more than 50ms implies a pause, wait a bit longer to prevent early cut-offs on slow connections.
+    if (now - lastBarcodeTime > 500) {
       barcodeBuffer = '';
     }
     lastBarcodeTime = now;
 
     if (event.key === 'Enter') {
-      if (barcodeBuffer.length > 3) {
-        const product = products.find(p => p.sku === barcodeBuffer);
+      const code = barcodeBuffer.trim();
+      if (code.length > 2) {
+        const product = products.find(p => p.sku === code || p.sku === barcodeBuffer);
         if (product) {
           updateCart(product.id, 1);
-          barcodeBuffer = '';
         }
       }
       barcodeBuffer = '';
@@ -189,7 +192,7 @@
       }
       receipt = body.receipt;
       cart = body.cart;
-      showReceipt = true;
+      doPrint(body.receipt);
       uiMessage = '';
     } finally {
       cartLoading = false;
