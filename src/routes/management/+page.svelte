@@ -179,19 +179,41 @@
 
       <form method="POST" action="?/updateLogo" use:enhance class="space-y-6">
         <div>
-          <label class="block text-sm font-bold text-slate-700 mb-2" for="logoUrl">Logo URL</label>
+          <label class="block text-sm font-bold text-slate-700 mb-2" for="logoUrl">Upload Logo</label>
           <div class="flex gap-3">
             <input 
-              name="logoUrl" 
-              class="flex-1 rounded-lg border border-primary/20 px-4 py-2 focus:ring-2 focus:ring-primary/20 outline-none" 
-              placeholder="https://example.com/logo.png" 
-              value={logoUrl ?? ''}
+              type="file"
+              accept="image/*"
+              class="flex-1 rounded-lg border border-primary/20 bg-slate-50 px-4 py-2 file:mr-4 file:rounded-lg file:border-0 file:bg-primary/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary/20" 
+              on:change={async (e) => {
+                const file = e.currentTarget.files?.[0];
+                if (!file) return;
+                
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                const res = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    const hiddenInput = document.getElementById('hiddenLogoInput') as HTMLInputElement | null;
+                    if (hiddenInput) {
+                        hiddenInput.value = data.url;
+                    }
+                    logoUrl = data.url; // for preview
+                } else {
+                    alert('Upload failed');
+                }
+              }}
             />
-            <button class="bg-primary text-white px-6 py-2 rounded-lg font-bold shadow-lg shadow-primary/20">
+            <input type="hidden" name="logoUrl" id="hiddenLogoInput" value={logoUrl ?? ''} />
+            <button type="submit" class="bg-primary text-white px-6 py-2 rounded-lg font-bold shadow-lg shadow-primary/20">
               Save
             </button>
           </div>
-          <p class="mt-2 text-xs text-slate-400">Provide a hosted image URL for your bakery logo.</p>
+          <p class="mt-2 text-xs text-slate-400">Select an image from your computer.</p>
         </div>
 
         <div class="pt-6 border-t border-slate-100">

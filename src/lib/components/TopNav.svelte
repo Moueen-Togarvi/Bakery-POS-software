@@ -47,10 +47,21 @@
       {/each}
     </nav>
 
-    <div class="hidden items-center gap-3 md:flex">
-      <button class="rounded-lg bg-primary/10 p-2 text-primary" aria-label="Notifications">
-        <span class="material-symbols-outlined">notifications</span>
+    <div class="hidden items-center gap-4 md:flex">
+      <div class="flex items-center gap-2">
+        <div class="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
+        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Online</span>
+      </div>
+      <button class="rounded-lg bg-primary/10 p-2 text-primary hover:bg-primary/20 transition-colors" aria-label="Notifications">
+        <span class="material-symbols-outlined italic">notifications</span>
       </button>
+      <div class="h-10 w-10 overflow-hidden rounded-full border-2 border-primary/20 bg-primary/5 p-0.5">
+        <img 
+          src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" 
+          alt="Admin" 
+          class="h-full w-full rounded-full object-cover bg-white"
+        />
+      </div>
     </div>
   </div>
 </header>

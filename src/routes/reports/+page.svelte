@@ -55,37 +55,54 @@
       const lineRows = receipt.items
         .map(
           (item: any) =>
-            `<tr><td style="padding:6px 0;">${item.name} x${item.quantity}</td><td style="text-align:right;">${formatCurrency(item.lineTotal)}</td></tr>`
+            `<tr><td style="padding:6px 0;">${item.name}${item.flavor ? ` (${item.flavor})` : ''} x${item.quantity}</td><td style="text-align:right;">${formatCurrency(item.lineTotal)}</td></tr>`
         )
         .join('');
 
       const html = `<!doctype html>
   <html>
-    <head><title>${receipt.receiptNo}</title></head>
-    <body style="font-family: Arial, sans-serif; padding: 24px; color: #111;">
-      <h2 style="margin:0 0 12px;">OvenFresh Invoice</h2>
-      <p style="margin:4px 0;">Receipt: ${receipt.receiptNo}</p>
-      <p style="margin:4px 0;">Order: ${receipt.orderNo}</p>
-      <p style="margin:4px 0;">Payment: ${receipt.paymentMethod}</p>
-      <p style="margin:4px 0;">Date: ${new Date(receipt.issuedAt).toLocaleString()}</p>
-      <hr style="margin:12px 0;" />
-      <table style="width:100%; border-collapse: collapse;">${lineRows}</table>
-      <hr style="margin:12px 0;" />
-      <p style="margin:4px 0;">Subtotal: ${formatCurrency(receipt.subtotal)}</p>
-      <p style="margin:4px 0;">Tax (8%): ${formatCurrency(receipt.tax)}</p>
-      <p style="margin:4px 0; font-weight:700;">Total: ${formatCurrency(receipt.total)}</p>
+    <head>
+      <title>${receipt.receiptNo}</title>
+      <style>
+        body { font-family: monospace; font-size: 12px; margin: 0; padding: 10px; width: 280px; color: #000; }
+        h2 { margin: 0 0 10px; font-size: 16px; text-align: center; }
+        p { margin: 2px 0; }
+        table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+        td, th { padding: 4px 0; text-align: left; }
+        td.right, th.right { text-align: right; }
+        hr { border: none; border-top: 1px dashed #000; margin: 5px 0; }
+      </style>
+    </head>
+    <body>
+      <h2>OvenFresh Invoice</h2>
+      <p>Receipt: ${receipt.receiptNo}</p>
+      <p>Order: ${receipt.orderNo}</p>
+      <p>Payment: ${receipt.paymentMethod}</p>
+      <p>Date: ${new Date(receipt.issuedAt).toLocaleString()}</p>
+      <hr />
+      <table>${lineRows.replace(/style="[^"]*"/g, '').replace(/<td(?=>)/g, '<td>').replace(/<td(>)/g, '<td>').replace(/<td style="text-align:right;">/g, '<td class="right">')}</table>
+      <hr />
+      <p style="display: flex; justify-content: space-between;"><span>Subtotal:</span> <span>${formatCurrency(receipt.subtotal)}</span></p>
+      <p style="display: flex; justify-content: space-between;"><span>Tax (8%):</span> <span>${formatCurrency(receipt.tax)}</span></p>
+      <hr />
+      <p style="display: flex; justify-content: space-between; font-weight: bold; font-size: 14px;"><span>TOTAL:</span> <span>${formatCurrency(receipt.total)}</span></p>
     </body>
   </html>`;
 
-      const popup = window.open('', '_blank', 'width=420,height=720');
-      if (!popup) return;
-      popup.document.open();
-      popup.document.write(html);
-      popup.document.close();
-      popup.focus();
-      popup.print();
+      receiptHtml = html;
+      showReceipt = true;
     } finally {
       busy = false;
+    }
+  }
+
+  let showReceipt = false;
+  let receiptHtml = '';
+
+  function triggerPrint() {
+    const iframe = document.getElementById('receiptFrame') as HTMLIFrameElement;
+    if (iframe && iframe.contentWindow) {
+      iframe.contentWindow.print();
     }
   }
 </script>
@@ -222,3 +239,36 @@
     </section>
   </section>
 </main>
+
+{#if showReceipt}
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+    <div class="w-full max-w-sm overflow-hidden rounded-2xl bg-white shadow-2xl">
+      <div class="bg-slate-50 border-b border-primary/10 p-4 flex items-center justify-between">
+        <h3 class="text-lg font-bold text-slate-900">Print Receipt</h3>
+        <button class="text-slate-400 hover:text-red-500 transition-colors" on:click={() => (showReceipt = false)}>
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      
+      <div class="p-4 flex justify-center bg-slate-100">
+        <iframe 
+          id="receiptFrame" 
+          srcdoc={receiptHtml} 
+          title="Receipt Preview"
+          class="bg-white border shadow-sm"
+          style="width: 300px; height: 400px;"
+        ></iframe>
+      </div>
+
+      <div class="p-4 bg-white grid grid-cols-2 gap-3">
+        <button class="rounded-xl border border-primary px-3 py-3 font-bold text-primary hover:bg-primary/5 transition-colors flex items-center justify-center gap-2" on:click={triggerPrint}>
+          <span class="material-symbols-outlined text-sm">print</span>
+          Print
+        </button>
+        <button class="rounded-xl bg-primary px-3 py-3 font-bold text-white hover:bg-primary-dark transition-colors" on:click={() => (showReceipt = false)}>
+          Done
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}

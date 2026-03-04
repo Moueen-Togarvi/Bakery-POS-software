@@ -19,7 +19,7 @@ export const POST: RequestHandler = async ({ request }) => {
   const productId = Number(body.productId);
   const delta = Number(body.delta);
 
-  if (!Number.isInteger(productId) || !Number.isInteger(delta) || delta === 0) {
+  if (!Number.isInteger(productId) || !Number.isFinite(delta) || delta === 0) {
     return json({ message: 'Invalid payload' }, { status: 400 });
   }
 

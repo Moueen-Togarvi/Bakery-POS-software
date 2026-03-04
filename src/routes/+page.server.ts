@@ -3,16 +3,18 @@ import { getCartSummary, getCategories, getProducts } from '$lib/server/pos';
 
 export const load: PageServerLoad = async () => {
   try {
-    const [categories, products, cart] = await Promise.all([
+    const [categories, products, cart, report] = await Promise.all([
       getCategories(),
       getProducts(),
-      getCartSummary()
+      getCartSummary(),
+      import('$lib/server/pos').then(m => m.getSalesReport())
     ]);
 
     return {
       categories,
       products,
       cart,
+      recentOrders: report.recentOrders,
       dbOffline: false,
       dbMessage: ''
     };

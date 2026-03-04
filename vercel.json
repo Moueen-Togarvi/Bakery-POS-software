@@ -1,6 +1,6 @@
 {
-  "buildCommand": "npm run build",
-  "devCommand": "npm run dev",
-  "installCommand": "npm install",
-  "framework": "sveltekit"
+  "version": 2,
+  "framework": "sveltekit",
+  "cleanUrls": true,
+  "trailingSlash": false
 }

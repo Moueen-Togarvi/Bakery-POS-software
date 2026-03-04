@@ -17,7 +17,8 @@ async function buildCartSummary(): Promise<CartSummary> {
       ci.quantity::float,
       p.price::float AS "unitPrice",
       p.stock        AS "currentStock",
-      p.unit_type    AS "unitType"
+      p.unit_type    AS "unitType",
+      p.flavor
     FROM cart_items ci
     JOIN products p ON p.id = ci.product_id
     ORDER BY ci.id
@@ -30,7 +31,8 @@ async function buildCartSummary(): Promise<CartSummary> {
     quantity: Number(r.quantity),
     unitPrice: round2(Number(r.unitPrice)),
     lineTotal: round2(Number(r.unitPrice) * Number(r.quantity)),
-    unitType: r.unitType as UnitType
+    unitType: r.unitType as UnitType,
+    flavor: r.flavor
   }));
 
   const subtotal = round2(cartItems.reduce((s: number, i: any) => s + i.lineTotal, 0));
@@ -68,7 +70,7 @@ export async function getProducts(categoryId?: number): Promise<Product[]> {
   const rows = await queryWithRetry(
     `SELECT p.id, p.name, p.price::text, p.image_url AS "imageUrl",
             p.category_id AS "categoryId", c.name AS "categoryName",
-            p.stock, p.sku, p.unit_type AS "unitType"
+            p.stock, p.sku, p.unit_type AS "unitType", p.flavor
      FROM products p
      JOIN categories c ON p.category_id = c.id
      WHERE ($1::int IS NULL OR $1 = 0 OR p.category_id = $1)
@@ -98,22 +100,24 @@ export async function createProduct(input: {
   stock?: number;
   sku?: string;
   unitType?: UnitType;
+  flavor?: string;
 }): Promise<Product> {
   if (!input.name.trim()) throw new Error('Product name is required');
   if (!Number.isFinite(input.price) || input.price < 0) throw new Error('Valid price is required');
 
   const rows = await queryWithRetry(
-    `INSERT INTO products (name, price, image_url, category_id, stock, sku, unit_type)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)
+    `INSERT INTO products (name, price, image_url, category_id, stock, sku, unit_type, flavor)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
      ON CONFLICT (name) DO UPDATE SET
        price = EXCLUDED.price,
        image_url = EXCLUDED.image_url,
        category_id = EXCLUDED.category_id,
        stock = EXCLUDED.stock,
        sku = EXCLUDED.sku,
-       unit_type = EXCLUDED.unit_type
-     RETURNING id, name, price::text, image_url AS "imageUrl", category_id AS "categoryId", stock, sku, unit_type AS "unitType"`,
-    [input.name.trim(), input.price, input.imageUrl || null, input.categoryId, input.stock || 0, input.sku || null, input.unitType || 'pcs']
+       unit_type = EXCLUDED.unit_type,
+       flavor = EXCLUDED.flavor
+     RETURNING id, name, price::text, image_url AS "imageUrl", category_id AS "categoryId", stock, sku, unit_type AS "unitType", flavor`,
+    [input.name.trim(), input.price, input.imageUrl || null, input.categoryId, input.stock || 0, input.sku || null, input.unitType || 'pcs', input.flavor || null]
   );
   const catRows = await queryWithRetry('SELECT name FROM categories WHERE id = $1', [input.categoryId]);
   return { ...rows[0], categoryName: catRows[0]?.name || '' };
@@ -187,9 +191,9 @@ export async function completeOpenOrder(paymentMethod?: PaymentMethod): Promise<
   // Insert order items and decrement stock
   for (const item of cart.items) {
     await queryWithRetry(
-      `INSERT INTO order_items (order_id, product_id, name, image_url, quantity, unit_price, line_total)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [orderId, item.productId, item.name, item.imageUrl, item.quantity, item.unitPrice, item.lineTotal]
+      `INSERT INTO order_items (order_id, product_id, name, image_url, quantity, unit_price, line_total, flavor)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [orderId, item.productId, item.name, item.imageUrl, item.quantity, item.unitPrice, item.lineTotal, (item as any).flavor]
     );
     await queryWithRetry(
       `UPDATE products SET stock = stock - $1 WHERE id = $2`,
@@ -228,7 +232,8 @@ export async function getInventoryRows() {
       reorderLevel,
       status: product.stock <= reorderLevel ? 'Low' : 'Healthy',
       sku: product.sku,
-      unitType: product.unitType
+      unitType: product.unitType,
+      flavor: product.flavor
     };
   });
 }
@@ -415,7 +420,8 @@ export async function getOrderReceipt(orderId: number): Promise<SaleReceipt> {
     imageUrl: r.image_url,
     quantity: r.quantity,
     unitPrice: Number(r.unit_price),
-    lineTotal: Number(r.line_total)
+    lineTotal: Number(r.line_total),
+    flavor: r.flavor
   }));
 
   return {

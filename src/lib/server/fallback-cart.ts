@@ -56,7 +56,8 @@ export function upsertFallbackCartItem(product: Product, delta: number) {
       imageUrl: product.imageUrl,
       quantity: delta,
       unitPrice,
-      lineTotal: round2(unitPrice * delta)
+      lineTotal: round2(unitPrice * delta),
+      unitType: product.unitType
     });
   } else {
     const nextQty = fallbackCart.items[idx].quantity + delta;

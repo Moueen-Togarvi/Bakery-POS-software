@@ -17,6 +17,7 @@ export type Product = {
   stock: number;
   sku: string | null;
   unitType: UnitType;
+  flavor: string | null;
 };
 
 export type CartItem = {
