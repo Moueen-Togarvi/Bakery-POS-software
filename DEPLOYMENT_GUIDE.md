@@ -22,11 +22,14 @@ If you haven't already, create a free Neon PostgreSQL database:
 ### 3. Configure Environment Variables
 In the Vercel project settings:
 1. Go to "Settings" → "Environment Variables"
-2. Add the following variable:
+2. Click "Add New"
+3. Enter the following:
    - **Name:** `DATABASE_URL`
-   - **Value:** Your Neon connection string
+   - **Value:** Your Neon connection string (paste your full connection string here)
    - **Environments:** Select all (Development, Preview, Production)
-3. Save changes
+   - Make sure you're **NOT** using any secret references like `@database_url`
+4. Click "Save"
+5. Go back to Deployments and trigger a redeploy
 
 ### 4. Deploy
 1. Click "Deploy"
