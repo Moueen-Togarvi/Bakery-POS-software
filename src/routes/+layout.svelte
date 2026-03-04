@@ -7,6 +7,13 @@
 </script>
 
 <div class="min-h-screen bg-background-light text-slate-900">
-  <TopNav pathname={$page.url.pathname} logoUrl={data.logoUrl ?? undefined} />
+  {#if $page.url.pathname !== '/login'}
+    <TopNav
+      pathname={$page.url.pathname}
+      logoUrl={data.logoUrl ?? undefined}
+      storeName={data.storeName ?? 'OvenFresh POS'}
+      username={data.username ?? ''}
+    />
+  {/if}
   {@render children()}
 </div>

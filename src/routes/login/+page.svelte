@@ -1,22 +1,29 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
+  import { page } from '$app/stores';
   import type { ActionData } from './$types';
 
   export let form: ActionData;
   let busy = false;
+  $: storeName = $page.data.storeName ?? 'OvenFresh POS';
+  $: logoUrl = $page.data.logoUrl ?? '';
 </script>
 
 <svelte:head>
-  <title>Login | OvenFresh POS</title>
+  <title>Login | {storeName}</title>
 </svelte:head>
 
 <main class="min-h-screen bg-slate-50 flex items-center justify-center p-4">
   <div class="w-full max-w-sm bg-white rounded-2xl shadow-xl p-8 border border-primary/10">
     <div class="text-center mb-8">
       <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 text-primary mb-4">
-        <span class="material-symbols-outlined text-3xl">local_cafe</span>
+        {#if logoUrl}
+          <img src={logoUrl} alt="Logo" class="h-12 w-12 object-contain" />
+        {:else}
+          <span class="material-symbols-outlined text-3xl">local_cafe</span>
+        {/if}
       </div>
-      <h1 class="text-2xl font-bold text-slate-900">OvenFresh POS</h1>
+      <h1 class="text-2xl font-bold text-slate-900">{storeName}</h1>
       <p class="text-slate-500 mt-1">Sign in to continue</p>
     </div>
 

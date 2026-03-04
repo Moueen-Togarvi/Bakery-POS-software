@@ -2,47 +2,101 @@
   import type { PageData, ActionData } from './$types';
   import { formatCurrency } from '$lib/components/Currency';
   import { enhance } from '$app/forms';
+  import { invalidateAll } from '$app/navigation';
 
   export let data: PageData;
   export let form: ActionData;
+  const storeName = data.storeName ?? 'OvenFresh POS';
 
-  let activeTab: 'staff' | 'finance' | 'settings' = 'staff';
+  let activeTab: 'staff' | 'finance' = 'staff';
   let busy = false;
 
   $: users = data.users;
   $: finances = data.finances;
-  $: logoUrl = data.logoUrl;
+
+  let showEditModal = false;
+  let editUserId = 0;
+  let editUsername = '';
+  let editRole: 'admin' | 'cashier' = 'cashier';
+  let editSalary = 0;
+  let editPassword = '';
+  let modalBusy = false;
+  let modalMessage = '';
+
+  function openEdit(user: any) {
+    editUserId = user.id;
+    editUsername = user.username;
+    editRole = user.role;
+    editSalary = user.salary;
+    editPassword = '';
+    modalMessage = '';
+    showEditModal = true;
+  }
+
+  async function saveUserEdit() {
+    modalBusy = true;
+    try {
+      const res = await fetch('/api/users', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editUserId,
+          role: editRole,
+          salary: Number(editSalary || 0),
+          password: editPassword
+        })
+      });
+      const body = await res.json();
+      if (!res.ok) {
+        modalMessage = body.message ?? 'Update failed.';
+        return;
+      }
+      showEditModal = false;
+      await invalidateAll();
+    } finally {
+      modalBusy = false;
+    }
+  }
+
+  async function removeUser(user: any) {
+    if (!confirm(`Delete user "${user.username}"?`)) return;
+    const res = await fetch('/api/users', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: user.id, username: user.username })
+    });
+    const body = await res.json();
+    if (!res.ok) {
+      alert(body.message ?? 'Delete failed');
+      return;
+    }
+    await invalidateAll();
+  }
 </script>
 
 <svelte:head>
-  <title>Management | OvenFresh POS</title>
+  <title>Management | {storeName}</title>
 </svelte:head>
 
 <main class="min-h-[calc(100vh-69px)] p-4 md:p-6">
   <div class="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
     <div>
       <h1 class="text-3xl font-bold text-slate-900">Admin Management</h1>
-      <p class="text-slate-500">Manage your staff, finances, and store settings</p>
+      <p class="text-slate-500">Manage staff and business finance</p>
     </div>
-    
+
     <div class="flex rounded-xl bg-primary/10 p-1">
-      <button 
+      <button
         class={`rounded-lg px-4 py-2 text-sm font-semibold transition-all ${activeTab === 'staff' ? 'bg-primary text-white shadow-md' : 'text-slate-600 hover:text-primary'}`}
-        on:click={() => activeTab = 'staff'}
+        on:click={() => (activeTab = 'staff')}
       >
         Staff & Roles
       </button>
-      <button 
+      <button
         class={`rounded-lg px-4 py-2 text-sm font-semibold transition-all ${activeTab === 'finance' ? 'bg-primary text-white shadow-md' : 'text-slate-600 hover:text-primary'}`}
-        on:click={() => activeTab = 'finance'}
+        on:click={() => (activeTab = 'finance')}
       >
         Finance & Salary
-      </button>
-      <button 
-        class={`rounded-lg px-4 py-2 text-sm font-semibold transition-all ${activeTab === 'settings' ? 'bg-primary text-white shadow-md' : 'text-slate-600 hover:text-primary'}`}
-        on:click={() => activeTab = 'settings'}
-      >
-        Branding
       </button>
     </div>
   </div>
@@ -66,6 +120,7 @@
                   <th class="px-4 py-3">Role</th>
                   <th class="px-4 py-3">Salary</th>
                   <th class="px-4 py-3">Joined At</th>
+                  <th class="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -79,6 +134,16 @@
                     </td>
                     <td class="px-4 py-3 text-slate-600">{formatCurrency(user.salary)}</td>
                     <td class="px-4 py-3 text-slate-500">{new Date(user.joinedAt).toLocaleDateString()}</td>
+                    <td class="px-4 py-3 text-right">
+                      <div class="inline-flex items-center gap-1">
+                        <button class="rounded-md bg-blue-50 px-2 py-1 text-[10px] font-bold text-blue-700 hover:bg-blue-100" on:click={() => openEdit(user)}>
+                          Edit
+                        </button>
+                        <button class="rounded-md bg-red-50 px-2 py-1 text-[10px] font-bold text-red-700 hover:bg-red-100" on:click={() => removeUser(user)}>
+                          Delete
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 {/each}
               </tbody>
@@ -89,15 +154,15 @@
 
       <section>
         <div class="rounded-2xl bg-white p-5 shadow-sm">
-          <h2 class="text-xl font-bold text-slate-900 mb-2">Add / Update Staff</h2>
-          <p class="text-sm text-slate-500 mb-4">Create or modify user credentials</p>
+          <h2 class="text-xl font-bold text-slate-900 mb-2">Add Staff</h2>
+          <p class="text-sm text-slate-500 mb-4">Create user credentials</p>
           <form method="POST" action="?/upsertUser" use:enhance={() => { busy = true; return async ({ update }) => { busy = false; update(); }; }} class="space-y-4">
             <div>
               <label class="block text-xs font-semibold text-slate-500 mb-1" for="username">Username</label>
               <input name="username" class="w-full rounded-lg border border-primary/20 px-3 py-2" placeholder="e.g. cashier1" required />
             </div>
             <div>
-              <label class="block text-xs font-semibold text-slate-500 mb-1" for="password">Password (Optional to Update)</label>
+              <label class="block text-xs font-semibold text-slate-500 mb-1" for="password">Password (Optional)</label>
               <input name="password" type="password" class="w-full rounded-lg border border-primary/20 px-3 py-2" placeholder="••••••••" />
             </div>
             <div>
@@ -109,7 +174,7 @@
             </div>
             <div>
               <label class="block text-xs font-semibold text-slate-500 mb-1" for="salary">Monthly Salary</label>
-              <input name="salary" type="number" class="w-full rounded-lg border border-primary/20 px-3 py-2" placeholder="Rs 30000" />
+              <input name="salary" type="number" class="w-full rounded-lg border border-primary/20 px-3 py-2" placeholder="30000" />
             </div>
             <button type="submit" class="w-full rounded-lg bg-primary py-2 font-bold text-white shadow-md active:scale-95 transition-all" disabled={busy}>
               {busy ? 'Saving...' : 'Save Staff Member'}
@@ -167,66 +232,50 @@
       <div class="lg:col-span-2 bg-primary/5 rounded-2xl p-5 border border-primary/10">
         <h3 class="font-bold text-slate-800 mb-2">Finance Guide</h3>
         <p class="text-sm text-slate-600 leading-relaxed">
-          Log all business expenses and salary payouts here to keep an accurate track of your <b>Net Profit</b>. 
+          Log all business expenses and salary payouts here to keep an accurate track of your <b>Net Profit</b>.
           Revenue is automatically calculated from completed sales.
         </p>
       </div>
     </div>
-  {:else if activeTab === 'settings'}
-    <div class="max-w-xl mx-auto rounded-2xl bg-white p-6 shadow-sm border border-primary/10">
-      <h2 class="text-2xl font-bold text-slate-900 mb-1">Store Branding</h2>
-      <p class="text-slate-500 mb-6">Update your bakery's logo and public profile</p>
-
-      <form method="POST" action="?/updateLogo" use:enhance class="space-y-6">
-        <div>
-          <label class="block text-sm font-bold text-slate-700 mb-2" for="logoUrl">Upload Logo</label>
-          <div class="flex gap-3">
-            <input 
-              type="file"
-              accept="image/*"
-              class="flex-1 rounded-lg border border-primary/20 bg-slate-50 px-4 py-2 file:mr-4 file:rounded-lg file:border-0 file:bg-primary/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary/20" 
-              on:change={async (e) => {
-                const file = e.currentTarget.files?.[0];
-                if (!file) return;
-                
-                const formData = new FormData();
-                formData.append('file', file);
-                
-                const res = await fetch('/api/upload', {
-                    method: 'POST',
-                    body: formData
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    const hiddenInput = document.getElementById('hiddenLogoInput') as HTMLInputElement | null;
-                    if (hiddenInput) {
-                        hiddenInput.value = data.url;
-                    }
-                    logoUrl = data.url; // for preview
-                } else {
-                    alert('Upload failed');
-                }
-              }}
-            />
-            <input type="hidden" name="logoUrl" id="hiddenLogoInput" value={logoUrl ?? ''} />
-            <button type="submit" class="bg-primary text-white px-6 py-2 rounded-lg font-bold shadow-lg shadow-primary/20">
-              Save
-            </button>
-          </div>
-          <p class="mt-2 text-xs text-slate-400">Select an image from your computer.</p>
-        </div>
-
-        <div class="pt-6 border-t border-slate-100">
-          <p class="text-sm font-bold text-slate-700 mb-3">Logo Preview</p>
-          <div class="h-32 w-full rounded-xl bg-slate-50 flex items-center justify-center border border-dashed border-slate-200 overflow-hidden">
-            {#if logoUrl}
-              <img src={logoUrl} alt="Logo Preview" class="max-h-full max-w-full object-contain p-2" />
-            {:else}
-              <span class="material-symbols-outlined text-slate-300 text-5xl">image</span>
-            {/if}
-          </div>
-        </div>
-      </form>
-    </div>
   {/if}
 </main>
+
+{#if showEditModal}
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div class="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl">
+      <h3 class="text-lg font-bold text-slate-900">Edit Staff</h3>
+      <p class="mb-4 text-xs text-slate-500">{editUsername}</p>
+
+      {#if modalMessage}
+        <div class="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{modalMessage}</div>
+      {/if}
+
+      <div class="space-y-3">
+        <div>
+          <label for="edit-user-role" class="mb-1 block text-xs font-semibold text-slate-600">Role</label>
+          <select id="edit-user-role" class="w-full rounded-lg border border-primary/20 px-3 py-2" bind:value={editRole}>
+            <option value="cashier">Cashier</option>
+            <option value="admin">Administrator</option>
+          </select>
+        </div>
+        <div>
+          <label for="edit-user-salary" class="mb-1 block text-xs font-semibold text-slate-600">Salary</label>
+          <input id="edit-user-salary" class="w-full rounded-lg border border-primary/20 px-3 py-2" type="number" bind:value={editSalary} />
+        </div>
+        <div>
+          <label for="edit-user-password" class="mb-1 block text-xs font-semibold text-slate-600">New Password (optional)</label>
+          <input id="edit-user-password" class="w-full rounded-lg border border-primary/20 px-3 py-2" type="password" bind:value={editPassword} />
+        </div>
+      </div>
+
+      <div class="mt-4 flex justify-end gap-2">
+        <button class="rounded-lg border border-slate-300 px-3 py-2 text-xs font-bold text-slate-700" on:click={() => (showEditModal = false)} disabled={modalBusy}>
+          Cancel
+        </button>
+        <button class="rounded-lg bg-primary px-4 py-2 text-xs font-bold text-white" on:click={saveUserEdit} disabled={modalBusy}>
+          {modalBusy ? 'Saving...' : 'Save'}
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}

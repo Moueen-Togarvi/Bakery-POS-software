@@ -36,14 +36,24 @@ export const actions: Actions = {
             cookies.set('session', user.username, {
                 path: '/',
                 httpOnly: true,
-                sameSite: 'strict',
-                maxAge: 60 * 60 * 24 * 7 // 1 week
+                secure: false, // Set to true if using HTTPS, but false for local dev/testing
+                sameSite: 'lax',
+                // Session cookie: cleared when browser session ends
             });
 
             throw redirect(303, '/');
         } catch (e) {
-            if (e instanceof Response) throw e; // Pass SvelteKit redirects
-            return fail(500, { message: 'Server error during login' });
+            // SvelteKit redirect needs to be thrown to work
+            if ((e as any).status && (e as any).location) throw e;
+            if (e instanceof Response) throw e;
+
+            console.error('--- Login Action Failure ---');
+            console.error(e);
+
+            const errBase = e instanceof Error ? e.message : String(e);
+            return fail(500, {
+                message: `Server Connection Error. Please try again or check your internet. (${errBase.slice(0, 50)})`
+            });
         }
     }
 };

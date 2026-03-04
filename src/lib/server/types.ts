@@ -1,6 +1,19 @@
 export type PaymentMethod = 'Cash' | 'Card' | 'QR';
 
-export type UnitType = 'pcs' | 'kg' | 'lb';
+export type UnitType =
+  | 'pcs'
+  | 'kg'
+  | 'lb'
+  | 'g'
+  | 'oz'
+  | 'dozen'
+  | 'tray'
+  | 'box'
+  | 'pack'
+  | 'slice'
+  | 'loaf'
+  | 'liter'
+  | 'ml';
 
 export type Category = {
   id: number;
@@ -11,6 +24,7 @@ export type Product = {
   id: number;
   name: string;
   price: string;
+  buyingPrice: string;
   imageUrl: string | null;
   categoryId: number;
   categoryName: string;

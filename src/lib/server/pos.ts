@@ -1,12 +1,22 @@
 import { sql, queryWithRetry } from './db';
 import type { CartSummary, Category, PaymentMethod, Product, SaleReceipt, User, FinanceTransaction, UnitType } from './types';
 
-const TAX_RATE = 0.08; // Tax restored as per user request
+const DEFAULT_TAX_RATE = 0.08;
 const CUSTOMER_NAME = 'Walk-in Customer';
+const SETTINGS_CACHE_TTL_MS = 60_000;
+const settingsCache = new Map<string, { value: string | null; expiresAt: number }>();
+const PAYMENT_METHODS: PaymentMethod[] = ['Cash', 'Card', 'QR'];
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 const round2 = (v: number) => Number(Number(v).toFixed(2));
+
+const parseTaxRate = (raw: string | null) => {
+  const value = Number(raw);
+  if (!Number.isFinite(value) || value < 0) return DEFAULT_TAX_RATE;
+  const ratio = value > 1 ? value / 100 : value;
+  return Math.min(1, Math.max(0, ratio));
+};
 
 async function buildCartSummary(): Promise<CartSummary> {
   const items = await queryWithRetry(`
@@ -16,6 +26,7 @@ async function buildCartSummary(): Promise<CartSummary> {
       p.image_url    AS "imageUrl",
       ci.quantity::float,
       p.price::float AS "unitPrice",
+      p.buying_price::float AS "buyingPrice",
       p.stock        AS "currentStock",
       p.unit_type    AS "unitType",
       p.flavor
@@ -30,20 +41,29 @@ async function buildCartSummary(): Promise<CartSummary> {
     imageUrl: r.imageUrl,
     quantity: Number(r.quantity),
     unitPrice: round2(Number(r.unitPrice)),
+    buyingPrice: round2(Number(r.buyingPrice)),
     lineTotal: round2(Number(r.unitPrice) * Number(r.quantity)),
     unitType: r.unitType as UnitType,
     flavor: r.flavor
   }));
 
   const subtotal = round2(cartItems.reduce((s: number, i: any) => s + i.lineTotal, 0));
-  const tax = round2(subtotal * TAX_RATE);
+  const [openPaymentMethod, taxRateSetting] = await Promise.all([
+    getSetting('open_payment_method'),
+    getSetting('tax_rate')
+  ]);
+  const taxRate = parseTaxRate(taxRateSetting);
+  const tax = round2(subtotal * taxRate);
   const total = round2(subtotal + tax);
+  const paymentMethod = PAYMENT_METHODS.includes(openPaymentMethod as PaymentMethod)
+    ? (openPaymentMethod as PaymentMethod)
+    : 'Cash';
 
   return {
     orderId: 0,
     orderNo: 'ORD-ACTIVE',
     customerName: CUSTOMER_NAME,
-    paymentMethod: 'Cash',
+    paymentMethod,
     receiptNo: 'RCPT-PENDING',
     receiptIssuedAt: new Date().toISOString(),
     items: cartItems,
@@ -70,6 +90,7 @@ export async function getProducts(categoryId?: number): Promise<Product[]> {
   const rows = await queryWithRetry(
     `SELECT p.id, p.name, p.price::text, p.image_url AS "imageUrl",
             p.category_id AS "categoryId", c.name AS "categoryName",
+            p.buying_price::text AS "buyingPrice",
             p.stock, p.sku, p.unit_type AS "unitType", p.flavor
      FROM products p
      JOIN categories c ON p.category_id = c.id
@@ -96,6 +117,7 @@ export async function createProduct(input: {
   name: string;
   categoryId: number;
   price: number;
+  buyingPrice?: number;
   imageUrl?: string;
   stock?: number;
   sku?: string;
@@ -106,21 +128,97 @@ export async function createProduct(input: {
   if (!Number.isFinite(input.price) || input.price < 0) throw new Error('Valid price is required');
 
   const rows = await queryWithRetry(
-    `INSERT INTO products (name, price, image_url, category_id, stock, sku, unit_type, flavor)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    `INSERT INTO products (name, price, buying_price, image_url, category_id, stock, sku, unit_type, flavor)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
      ON CONFLICT (name) DO UPDATE SET
        price = EXCLUDED.price,
+       buying_price = EXCLUDED.buying_price,
        image_url = EXCLUDED.image_url,
        category_id = EXCLUDED.category_id,
        stock = EXCLUDED.stock,
        sku = EXCLUDED.sku,
        unit_type = EXCLUDED.unit_type,
        flavor = EXCLUDED.flavor
-     RETURNING id, name, price::text, image_url AS "imageUrl", category_id AS "categoryId", stock, sku, unit_type AS "unitType", flavor`,
-    [input.name.trim(), input.price, input.imageUrl || null, input.categoryId, input.stock || 0, input.sku || null, input.unitType || 'pcs', input.flavor || null]
+     RETURNING id, name, price::text, buying_price::text AS "buyingPrice", image_url AS "imageUrl", category_id AS "categoryId", stock, sku, unit_type AS "unitType", flavor`,
+    [
+      input.name.trim(),
+      input.price,
+      input.buyingPrice || 0,
+      input.imageUrl || null,
+      input.categoryId,
+      input.stock || 0,
+      input.sku || null,
+      input.unitType || 'pcs',
+      input.flavor || null
+    ]
   );
   const catRows = await queryWithRetry('SELECT name FROM categories WHERE id = $1', [input.categoryId]);
   return { ...rows[0], categoryName: catRows[0]?.name || '' };
+}
+
+export async function updateProduct(input: {
+  id: number;
+  name: string;
+  categoryId: number;
+  price: number;
+  buyingPrice?: number;
+  imageUrl?: string;
+  stock?: number;
+  sku?: string;
+  unitType?: UnitType;
+  flavor?: string;
+}): Promise<Product> {
+  if (!Number.isInteger(input.id) || input.id <= 0) throw new Error('Valid product id is required');
+  if (!input.name.trim()) throw new Error('Product name is required');
+  if (!Number.isFinite(input.price) || input.price < 0) throw new Error('Valid price is required');
+
+  const rows = await queryWithRetry(
+    `UPDATE products
+     SET name = $2,
+         price = $3,
+         buying_price = $4,
+         image_url = $5,
+         category_id = $6,
+         stock = $7,
+         sku = $8,
+         unit_type = $9,
+         flavor = $10
+     WHERE id = $1
+     RETURNING id, name, price::text, buying_price::text AS "buyingPrice", image_url AS "imageUrl", category_id AS "categoryId", stock, sku, unit_type AS "unitType", flavor`,
+    [
+      input.id,
+      input.name.trim(),
+      input.price,
+      input.buyingPrice || 0,
+      input.imageUrl || null,
+      input.categoryId,
+      input.stock || 0,
+      input.sku || null,
+      input.unitType || 'pcs',
+      input.flavor || null
+    ]
+  );
+
+  if (!rows.length) throw new Error('Product not found');
+
+  const catRows = await queryWithRetry('SELECT name FROM categories WHERE id = $1', [input.categoryId]);
+  return { ...rows[0], categoryName: catRows[0]?.name || '' };
+}
+
+export async function deleteProduct(productId: number): Promise<void> {
+  if (!Number.isInteger(productId) || productId <= 0) throw new Error('Valid product id is required');
+
+  const usedRows = await queryWithRetry(
+    'SELECT COUNT(*)::int AS count FROM order_items WHERE product_id = $1',
+    [productId]
+  );
+  if ((usedRows[0]?.count || 0) > 0) {
+    throw new Error('Cannot delete product with sales history');
+  }
+
+  await queryWithRetry('DELETE FROM cart_items WHERE product_id = $1', [productId]);
+  const result = await queryWithRetry('DELETE FROM products WHERE id = $1 RETURNING id', [productId]);
+  if (!result.length) throw new Error('Product not found');
 }
 
 // ── Cart ──────────────────────────────────────────────────────────────────────
@@ -162,8 +260,8 @@ export async function clearOpenOrder(): Promise<void> {
 }
 
 export async function setOrderPaymentMethod(_paymentMethod: PaymentMethod): Promise<void> {
-  // payment method is ephemeral until order is placed – stored in session/UI state
-  // No DB action needed here; it will be passed in completeOpenOrder
+  const paymentMethod = PAYMENT_METHODS.includes(_paymentMethod) ? _paymentMethod : 'Cash';
+  await updateSetting('open_payment_method', paymentMethod);
 }
 
 export async function completeOpenOrder(paymentMethod?: PaymentMethod): Promise<SaleReceipt> {
@@ -191,9 +289,19 @@ export async function completeOpenOrder(paymentMethod?: PaymentMethod): Promise<
   // Insert order items and decrement stock
   for (const item of cart.items) {
     await queryWithRetry(
-      `INSERT INTO order_items (order_id, product_id, name, image_url, quantity, unit_price, line_total, flavor)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-      [orderId, item.productId, item.name, item.imageUrl, item.quantity, item.unitPrice, item.lineTotal, (item as any).flavor]
+      `INSERT INTO order_items (order_id, product_id, name, image_url, quantity, unit_price, line_total, flavor, cost_price)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      [
+        orderId,
+        item.productId,
+        item.name,
+        item.imageUrl,
+        item.quantity,
+        item.unitPrice,
+        item.lineTotal,
+        (item as any).flavor,
+        (item as any).buyingPrice || 0
+      ]
     );
     await queryWithRetry(
       `UPDATE products SET stock = stock - $1 WHERE id = $2`,
@@ -203,6 +311,7 @@ export async function completeOpenOrder(paymentMethod?: PaymentMethod): Promise<
 
   // Clear cart
   await queryWithRetry('DELETE FROM cart_items');
+  await updateSetting('open_payment_method', 'Cash');
 
   return {
     receiptNo,
@@ -223,11 +332,16 @@ export async function getInventoryRows() {
   const products = await getProducts();
   return products.map((product) => {
     const reorderLevel = 10;
+    const sellingPrice = Number(product.price);
+    const buyingPrice = Number(product.buyingPrice || 0);
     return {
       id: product.id,
       name: product.name,
       category: product.categoryName,
-      unitPrice: Number(product.price),
+      imageUrl: product.imageUrl,
+      unitPrice: sellingPrice,
+      buyingPrice,
+      unitProfit: round2(sellingPrice - buyingPrice),
       stock: product.stock,
       reorderLevel,
       status: product.stock <= reorderLevel ? 'Low' : 'Healthy',
@@ -240,54 +354,140 @@ export async function getInventoryRows() {
 
 // ── Reports ───────────────────────────────────────────────────────────────────
 
-export async function getSalesReport(search?: string) {
-  const whereClause = search ? `WHERE (order_no ILIKE $1 OR customer_name ILIKE $1 OR status ILIKE $1)` : '';
-  const searchParams = search ? [`%${search}%`] : [];
+export async function getSalesReport(options?: {
+  search?: string;
+  period?: 'daily' | 'weekly' | 'monthly' | 'custom';
+  baseDate?: string;
+  dateFrom?: string;
+  dateTo?: string;
+}) {
+  const search = options?.search?.trim() || '';
+  const period = options?.period || 'daily';
+  const baseDate = options?.baseDate || '';
+  const dateFrom = options?.dateFrom || '';
+  const dateTo = options?.dateTo || '';
+
+  const baseFilters: string[] = [];
+  const baseParams: any[] = [];
+
+  if (search) {
+    baseParams.push(`%${search}%`);
+    const p = `$${baseParams.length}`;
+    baseFilters.push(`(o.order_no ILIKE ${p} OR o.customer_name ILIKE ${p} OR o.status ILIKE ${p})`);
+  }
+
+  if (period === 'custom' && dateFrom) {
+    baseParams.push(dateFrom);
+    baseFilters.push(`o.receipt_issued_at::date >= $${baseParams.length}::date`);
+  }
+  if (period === 'custom' && dateTo) {
+    baseParams.push(dateTo);
+    baseFilters.push(`o.receipt_issued_at::date <= $${baseParams.length}::date`);
+  }
+  if (period === 'daily') {
+    if (baseDate) {
+      baseParams.push(baseDate);
+      baseFilters.push(`o.receipt_issued_at::date = $${baseParams.length}::date`);
+    } else {
+      baseFilters.push(`o.receipt_issued_at::date = CURRENT_DATE`);
+    }
+  }
+  if (period === 'weekly') {
+    if (baseDate) {
+      baseParams.push(baseDate);
+      const p = `$${baseParams.length}::date`;
+      baseFilters.push(`o.receipt_issued_at::date BETWEEN (${p} - INTERVAL '6 days') AND ${p}`);
+    } else {
+      baseFilters.push(`o.receipt_issued_at::date >= CURRENT_DATE - INTERVAL '6 days'`);
+    }
+  }
+  if (period === 'monthly') {
+    if (baseDate) {
+      baseParams.push(baseDate);
+      const p = `$${baseParams.length}::date`;
+      baseFilters.push(`o.receipt_issued_at::date BETWEEN (${p} - INTERVAL '29 days') AND ${p}`);
+    } else {
+      baseFilters.push(`o.receipt_issued_at::date >= CURRENT_DATE - INTERVAL '29 days'`);
+    }
+  }
+
+  const completedWhere = `WHERE o.status = 'completed'${baseFilters.length ? ` AND ${baseFilters.join(' AND ')}` : ''}`;
+  const completedWhereO2 = `WHERE o2.status = 'completed'${baseFilters.length ? ` AND ${baseFilters.join(' AND ').replace(/\bo\./g, 'o2.')}` : ''}`;
+  const ordersWhere = `WHERE ${baseFilters.length ? baseFilters.join(' AND ') : 'TRUE'}`;
 
   const [totalsRows, topItemsRows, recentOrdersRows] = await Promise.all([
-    (sql as any).query(`
+    (sql as any).query(
+      `
       SELECT
-        COUNT(*)::int              AS "totalOrders",
-        COALESCE(SUM(total), 0)    AS "totalRevenue",
-        COALESCE(AVG(total), 0)    AS "avgOrderValue"
-      FROM orders
-      ${whereClause && search ? 'WHERE status = \'completed\' AND ' + whereClause.substring(6) : 'WHERE status = \'completed\''}
-    `, searchParams),
-    (sql as any).query(`
+        COUNT(*)::int                                    AS "totalOrders",
+        COALESCE(SUM(o.total), 0)                        AS "totalRevenue",
+        COALESCE(SUM(o.subtotal), 0)                     AS "netSales",
+        COALESCE(AVG(o.total), 0)                        AS "avgOrderValue",
+        (
+          SELECT COALESCE(SUM(oi.cost_price * oi.quantity), 0)
+          FROM order_items oi
+          JOIN orders o2 ON o2.id = oi.order_id
+          ${completedWhereO2}
+        )                                                AS "totalCost"
+      FROM orders o
+      ${completedWhere}
+    `,
+      baseParams
+    ),
+    (sql as any).query(
+      `
       SELECT
         oi.name,
-        SUM(oi.quantity)::int   AS "totalQty",
-        SUM(oi.line_total)      AS "totalRevenue"
+        SUM(oi.quantity)::float   AS "totalQty",
+        SUM(oi.line_total)        AS "totalRevenue",
+        SUM(oi.cost_price * oi.quantity) AS "totalCost"
       FROM order_items oi
       JOIN orders o ON o.id = oi.order_id
-      WHERE o.status = 'completed'
+      ${completedWhere}
       GROUP BY oi.name
       ORDER BY "totalQty" DESC
       LIMIT 5
-    `),
-    (sql as any).query(`
+    `,
+      baseParams
+    ),
+    (sql as any).query(
+      `
       SELECT
-        id, order_no AS "orderNo",
-        payment_method AS "paymentMethod",
-        total,
-        receipt_issued_at AS "issuedAt",
-        status
-      FROM orders
-      ${whereClause}
-      ORDER BY receipt_issued_at DESC
-      LIMIT 20
-    `, searchParams)
+        o.id,
+        o.order_no AS "orderNo",
+        o.payment_method AS "paymentMethod",
+        o.total,
+        o.receipt_issued_at AS "issuedAt",
+        o.status
+      FROM orders o
+      ${ordersWhere}
+      ORDER BY o.receipt_issued_at DESC
+      LIMIT 50
+    `,
+      baseParams
+    )
   ]);
 
   const t = totalsRows[0];
+  const totalRevenue = round2(Number(t.totalRevenue));
+  const netSales = round2(Number(t.netSales));
+  const totalCost = round2(Number(t.totalCost));
+  const grossProfit = round2(netSales - totalCost);
+
   return {
     totalOrders: t.totalOrders,
-    totalRevenue: round2(Number(t.totalRevenue)),
+    totalRevenue,
+    netSales,
+    totalCost,
+    grossProfit,
+    profitMargin: netSales > 0 ? round2((grossProfit / netSales) * 100) : 0,
     avgOrderValue: round2(Number(t.avgOrderValue)),
     topItems: topItemsRows.map((r: any) => ({
       name: r.name,
-      totalQty: r.totalQty,
-      totalRevenue: round2(Number(r.totalRevenue))
+      totalQty: round2(Number(r.totalQty)),
+      totalRevenue: round2(Number(r.totalRevenue)),
+      totalCost: round2(Number(r.totalCost || 0)),
+      grossProfit: round2(Number(r.totalRevenue) - Number(r.totalCost || 0))
     })),
     recentOrders: recentOrdersRows.map((r: any) => ({
       id: r.id,
@@ -298,6 +498,41 @@ export async function getSalesReport(search?: string) {
       status: r.status
     }))
   };
+}
+
+export async function getRecentOrders(limit = 5) {
+  const rows = await queryWithRetry(
+    `SELECT
+      o.id,
+      o.order_no AS "orderNo",
+      o.customer_name AS "customerName",
+      o.payment_method AS "paymentMethod",
+      o.subtotal,
+      o.tax,
+      o.total,
+      o.receipt_issued_at AS "issuedAt",
+      o.status,
+      COALESCE(SUM(oi.quantity), 0)::float AS "itemCount"
+     FROM orders o
+     LEFT JOIN order_items oi ON oi.order_id = o.id
+     GROUP BY o.id, o.order_no, o.customer_name, o.payment_method, o.subtotal, o.tax, o.total, o.receipt_issued_at, o.status
+     ORDER BY o.receipt_issued_at DESC
+     LIMIT $1`,
+    [limit]
+  );
+
+  return rows.map((r: any) => ({
+    id: r.id,
+    orderNo: r.orderNo,
+    customerName: r.customerName,
+    paymentMethod: r.paymentMethod,
+    subtotal: round2(Number(r.subtotal || 0)),
+    tax: round2(Number(r.tax || 0)),
+    total: round2(Number(r.total)),
+    itemCount: round2(Number(r.itemCount || 0)),
+    issuedAt: r.issuedAt,
+    status: r.status
+  }));
 }
 
 export async function returnOrder(orderId: number): Promise<void> {
@@ -330,25 +565,40 @@ export async function upsertUser(input: {
   role: string;
   salary?: number;
 }): Promise<void> {
-  if (input.passwordHash) {
-    await queryWithRetry(
-      `INSERT INTO users (username, password_hash, role, salary)
-       VALUES ($1, $2, $3, $4)
-       ON CONFLICT (username) DO UPDATE SET
-         password_hash = EXCLUDED.password_hash,
-         role = EXCLUDED.role,
-         salary = EXCLUDED.salary`,
-      [input.username, input.passwordHash, input.role, input.salary || 0]
-    );
-  } else {
-    await queryWithRetry(
-      `UPDATE users SET
-         role = $2,
-         salary = $3
-       WHERE username = $1`,
-      [input.username, input.role, input.salary || 0]
-    );
-  }
+  const password = input.passwordHash || input.username; // Use username as default password if not provided
+
+  await queryWithRetry(
+    `INSERT INTO users (username, password_hash, role, salary)
+     VALUES ($1, $2, $3, $4)
+     ON CONFLICT (username) DO UPDATE SET
+       password_hash = CASE WHEN EXCLUDED.password_hash != EXCLUDED.username THEN EXCLUDED.password_hash ELSE users.password_hash END,
+       role = EXCLUDED.role,
+       salary = EXCLUDED.salary`,
+    [input.username, password, input.role, input.salary || 0]
+  );
+}
+
+export async function updateUser(input: {
+  id: number;
+  role: string;
+  salary?: number;
+  passwordHash?: string;
+}): Promise<void> {
+  if (!Number.isInteger(input.id) || input.id <= 0) throw new Error('Valid user id is required');
+
+  await queryWithRetry(
+    `UPDATE users
+     SET role = $2,
+         salary = $3,
+         password_hash = COALESCE(NULLIF($4, ''), password_hash)
+     WHERE id = $1`,
+    [input.id, input.role, input.salary || 0, input.passwordHash || '']
+  );
+}
+
+export async function deleteUser(userId: number): Promise<void> {
+  if (!Number.isInteger(userId) || userId <= 0) throw new Error('Valid user id is required');
+  await queryWithRetry('DELETE FROM users WHERE id = $1', [userId]);
 }
 
 // ── Finance & Expenses ────────────────────────────────────────────────────────
@@ -378,25 +628,33 @@ export async function getFinancialSummary(): Promise<{
   const totalRevenue = revenueRows[0].total || 0;
   let totalExpenses = 0;
   let totalSalaries = 0;
+  let extraIncome = 0;
 
   expenseRows.forEach((row: any) => {
     if (row.category === 'salary') totalSalaries = row.total;
     else if (row.category === 'expense') totalExpenses = row.total;
+    else if (row.category === 'income') extraIncome = row.total;
   });
 
   return {
     totalRevenue,
     totalExpenses,
     totalSalaries,
-    netProfit: totalRevenue - totalExpenses - totalSalaries
+    netProfit: (totalRevenue + extraIncome) - totalExpenses - totalSalaries
   };
 }
 
 // ── App Settings ──────────────────────────────────────────────────────────────
 
 export async function getSetting(key: string): Promise<string | null> {
+  const now = Date.now();
+  const cached = settingsCache.get(key);
+  if (cached && cached.expiresAt > now) return cached.value;
+
   const rows = await queryWithRetry('SELECT value FROM settings WHERE key = $1', [key]);
-  return rows[0]?.value || null;
+  const value = rows[0]?.value || null;
+  settingsCache.set(key, { value, expiresAt: now + SETTINGS_CACHE_TTL_MS });
+  return value;
 }
 
 export async function updateSetting(key: string, value: string): Promise<void> {
@@ -406,6 +664,7 @@ export async function updateSetting(key: string, value: string): Promise<void> {
      ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
     [key, value]
   );
+  settingsCache.set(key, { value, expiresAt: Date.now() + SETTINGS_CACHE_TTL_MS });
 }
 
 export async function getOrderReceipt(orderId: number): Promise<SaleReceipt> {

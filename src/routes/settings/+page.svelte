@@ -1,31 +1,100 @@
+<script lang="ts">
+  import { enhance } from '$app/forms';
+  import type { ActionData, PageData } from './$types';
+
+  export let data: PageData;
+  export let form: ActionData;
+
+  let busy = false;
+  let storeName = data.storeName ?? 'OvenFresh POS';
+  let logoUrl = data.logoUrl ?? '';
+  let taxRate = data.taxRate ?? '8';
+</script>
+
 <svelte:head>
-  <title>Settings | OvenFresh POS</title>
+  <title>Settings | {storeName}</title>
 </svelte:head>
 
 <main class="min-h-[calc(100vh-69px)] p-4 md:p-6">
-  <section class="mx-auto max-w-3xl rounded-2xl bg-white p-6 shadow-sm">
-    <h2 class="text-2xl font-bold text-slate-900">POS Settings</h2>
-    <p class="mt-1 text-sm text-slate-500">Store-level configuration panel</p>
+  <section class="mx-auto max-w-3xl rounded-2xl bg-white p-6 shadow-sm border border-primary/10">
+    <h2 class="text-2xl font-bold text-slate-900">Store Settings</h2>
+    <p class="mt-1 text-sm text-slate-500">Update store branding used across navbar and receipts.</p>
 
-    <div class="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
-      <label class="space-y-2">
-        <span class="text-sm font-semibold text-slate-700">Store Name</span>
-        <input class="w-full rounded-lg border border-primary/20 px-3 py-2" value="OvenFresh Bakery" />
-      </label>
-      <label class="space-y-2">
-        <span class="text-sm font-semibold text-slate-700">Tax Rate (%)</span>
-        <input class="w-full rounded-lg border border-primary/20 px-3 py-2" value="8" />
-      </label>
-      <label class="space-y-2">
-        <span class="text-sm font-semibold text-slate-700">Currency</span>
-        <input class="w-full rounded-lg border border-primary/20 px-3 py-2" value="USD" />
-      </label>
-      <label class="space-y-2">
-        <span class="text-sm font-semibold text-slate-700">Receipt Footer</span>
-        <input class="w-full rounded-lg border border-primary/20 px-3 py-2" value="Thank you for shopping with us" />
-      </label>
-    </div>
+    {#if form?.message}
+      <div class={`mt-4 rounded-lg border px-4 py-3 text-sm ${form.success ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-red-200 bg-red-50 text-red-700'}`}>
+        {form.message}
+      </div>
+    {/if}
 
-    <button class="mt-6 rounded-xl bg-primary px-5 py-3 font-bold text-white">Save Settings</button>
+    <form method="POST" action="?/updateBranding" use:enhance={() => { busy = true; return async ({ update }) => { busy = false; await update(); }; }} class="mt-6 space-y-5">
+      <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <label class="block space-y-2">
+          <span class="text-sm font-semibold text-slate-700">Store Name</span>
+          <input
+            name="storeName"
+            class="w-full rounded-lg border border-primary/20 px-3 py-2 outline-none focus:border-primary"
+            bind:value={storeName}
+            required
+          />
+        </label>
+        <label class="block space-y-2">
+          <span class="text-sm font-semibold text-slate-700">Tax Rate (%)</span>
+          <input
+            name="taxRate"
+            class="w-full rounded-lg border border-primary/20 px-3 py-2 outline-none focus:border-primary"
+            type="number"
+            min="0"
+            max="100"
+            step="0.1"
+            bind:value={taxRate}
+            required
+          />
+        </label>
+      </div>
+
+      <div class="space-y-2">
+        <span class="text-sm font-semibold text-slate-700">Store Logo</span>
+        <div class="flex items-center gap-3">
+          <input
+            type="file"
+            accept="image/*"
+            class="flex-1 rounded-lg border border-primary/20 bg-slate-50 px-4 py-2 file:mr-3 file:rounded-lg file:border-0 file:bg-primary/10 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-primary"
+            on:change={async (e) => {
+              const file = e.currentTarget.files?.[0];
+              if (!file) return;
+
+              const formData = new FormData();
+              formData.append('file', file);
+              const res = await fetch('/api/upload', { method: 'POST', body: formData });
+              if (!res.ok) {
+                alert('Logo upload failed');
+                return;
+              }
+              const upload = await res.json();
+              logoUrl = upload.url || '';
+            }}
+          />
+          <input type="hidden" name="logoUrl" value={logoUrl} />
+        </div>
+      </div>
+
+      <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <p class="mb-2 text-xs font-semibold text-slate-500 uppercase tracking-wide">Preview</p>
+        <div class="flex items-center gap-3">
+          {#if logoUrl}
+            <img src={logoUrl} alt="Store Logo" class="h-12 w-12 rounded-lg border border-slate-200 object-contain bg-white p-1" />
+          {:else}
+            <div class="flex h-12 w-12 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-300">
+              <span class="material-symbols-outlined">storefront</span>
+            </div>
+          {/if}
+          <p class="text-sm font-bold text-slate-900">{storeName}</p>
+        </div>
+      </div>
+
+      <button type="submit" class="rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-white" disabled={busy}>
+        {busy ? 'Saving...' : 'Save Settings'}
+      </button>
+    </form>
   </section>
 </main>

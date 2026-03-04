@@ -11,22 +11,33 @@ export const handle: Handle = async ({ event, resolve }) => {
     dbInitialized = true;
   }
 
-  const isLoginPage = event.url.pathname === '/login';
-  const isApiUpload = event.url.pathname.startsWith('/api/upload');
+  const pathname = event.url.pathname;
+  const isRoutedRequest = event.route.id !== null;
+  const isLoginPage = pathname === '/login';
   const session = event.cookies.get('session');
 
-  // Allow unauthenticated access to login page
-  if (isLoginPage || isApiUpload) {
+  // Skip static/assets and other non-routed requests
+  if (!isRoutedRequest) {
     return resolve(event);
   }
 
-  // Redirect to login if no session
+  // Define locals for routed requests
+  event.locals.user = session || '';
+
+  // If already logged in and trying to access login, redirect to home
+  if (session && isLoginPage) {
+    throw redirect(303, '/');
+  }
+
+  // Allow unauthenticated access only to login page
+  if (isLoginPage) {
+    return resolve(event);
+  }
+
+  // Redirect to login if there is no session for any protected route
   if (!session) {
     throw redirect(303, '/login');
   }
-
-  // Define locals
-  event.locals.user = session;
 
   return resolve(event);
 };
