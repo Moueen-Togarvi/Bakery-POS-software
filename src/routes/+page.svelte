@@ -316,6 +316,9 @@
         <p class="mt-0.5 text-lg font-bold {Number(data.todayProfit || 0) < 0 ? 'text-red-600' : 'text-sky-700'}">
           {formatCurrency(data.todayProfit || 0)}
         </p>
+        <p class="mt-1 text-[9px] text-slate-500">
+          Revenue - Cost = Profit
+        </p>
       </article>
     </div>
 

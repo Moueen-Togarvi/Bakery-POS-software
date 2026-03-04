@@ -120,20 +120,13 @@ export async function ensureSchema(): Promise<void> {
     }
 }
 
-/**
- * Executes a SQL query with automatic retries for transient connection errors.
- */
 export async function queryWithRetry(query: string, params: any[] = [], maxRetries = 4): Promise<any> {
-    if (Date.now() < circuitOpenUntil) {
-        throw buildUnavailableError();
-    }
-
     const retries = Math.max(1, Math.min(maxRetries || DEFAULT_MAX_RETRIES, 6));
     let lastError: any;
+
     for (let i = 0; i < retries; i++) {
         try {
             const result = await (client as any).query(query, params);
-            clearFailureState();
             return result;
         } catch (error: any) {
             lastError = error;
@@ -146,36 +139,15 @@ export async function queryWithRetry(query: string, params: any[] = [], maxRetri
                 continue;
             }
 
-            if (isTransientError(error, errorMessage)) {
-                if (isHardNetworkFailure(errorMessage)) {
-                    // A hard network failure usually affects all concurrent queries.
-                    // Open the circuit immediately to avoid retry storms.
-                    const now = Date.now();
-                    circuitOpenUntil = Math.max(circuitOpenUntil, now + HARD_NETWORK_CIRCUIT_OPEN_MS);
-                    if (now - lastCircuitLogAt > LOG_THROTTLE_MS) {
-                        lastCircuitLogAt = now;
-                        console.warn(`[DB] Network issue detected. Circuit opened for ${HARD_NETWORK_CIRCUIT_OPEN_MS}ms.`);
-                    }
-                    throw buildUnavailableError();
-                }
-
-                markTransientFailure();
-                if (Date.now() < circuitOpenUntil) {
-                    throw buildUnavailableError();
-                }
-
+            if (isTransientError(error, errorMessage) || isHardNetworkFailure(errorMessage)) {
                 if (i < retries - 1) {
-                    // Keep retries short to avoid long UI stalls on flaky networks.
-                    const delay = Math.min(Math.pow(2, i) * 250, 1500);
-                    logTransient(i + 1, retries, delay, errorMessage);
+                    const delay = Math.min(Math.pow(2, i) * 500, 3000); // 500ms, 1000ms, 2000ms, 3000ms
+                    console.warn(`[DB] Network/transient failure (attempt ${i + 1}/${retries}). Retrying in ${delay}ms... (${errorMessage})`);
                     await sleep(delay);
                     continue;
                 }
-            }
-
-            if (i < retries - 1) {
-                // Keep retries short to avoid long UI stalls on flaky networks.
-                const delay = Math.min(Math.pow(2, i) * 250, 1500);
+            } else if (i < retries - 1) {
+                const delay = Math.min(Math.pow(2, i) * 500, 3000);
                 await sleep(delay);
                 continue;
             }
@@ -183,10 +155,6 @@ export async function queryWithRetry(query: string, params: any[] = [], maxRetri
             console.error(`[DB] Permanent failure after ${i + 1} attempts: ${errorMessage}`);
             throw error;
         }
-    }
-
-    if (Date.now() < circuitOpenUntil) {
-        throw buildUnavailableError();
     }
 
     throw lastError;

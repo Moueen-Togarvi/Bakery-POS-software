@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { writeFileSync } from 'fs';
+import { writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 
 export const POST: RequestHandler = async ({ request }) => {
@@ -8,12 +8,12 @@ export const POST: RequestHandler = async ({ request }) => {
         const data = await request.formData();
         const file = data.get('file') as File;
 
-        if (!file || !(file instanceof File)) {
+        if (!file || typeof file === 'string' || !file.name) {
             return json({ message: 'No file provided' }, { status: 400 });
         }
 
         // Basic validation
-        if (!file.type.startsWith('image/')) {
+        if (!file.type || !file.type.startsWith('image/')) {
             return json({ message: 'Only image files are allowed' }, { status: 400 });
         }
 
@@ -21,8 +21,13 @@ export const POST: RequestHandler = async ({ request }) => {
         const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
         const filename = `${timestamp}-${safeName}`;
 
-        // Save to static/uploads
-        const uploadDir = join(process.cwd(), 'static', 'uploads');
+        // Save to root-level uploads folder to avoid Vite static caching bugs
+        const uploadDir = join(process.cwd(), 'uploads');
+
+        if (!existsSync(uploadDir)) {
+            mkdirSync(uploadDir, { recursive: true });
+        }
+
         const filepath = join(uploadDir, filename);
 
         const buffer = Buffer.from(await file.arrayBuffer());
