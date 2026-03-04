@@ -4,7 +4,12 @@ import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 const config = {
   preprocess: vitePreprocess(),
   kit: {
-    adapter: adapter()
+    adapter: adapter({
+      // Disable precompression of all assets in the output folder
+      precompress: false,
+      // Strict mode for edge runtime
+      strict: false
+    })
   }
 };
 
