@@ -11,17 +11,7 @@ if (connectionString) {
     max: 10,
     idle_timeout: 30,
     connect_timeout: 10,
-    max_lifetime: 60 * 30, // 30 minutes
-    max_idle_lifetime: 30,
-    onnotice: (notice) => {
-      console.warn('[DB Notice]', notice.message);
-    }
-  });
-
-  // Handle connection errors
-  sqlClient.on?.('error', (error) => {
-    console.error('[DB Connection Error]', error);
-    sqlClient = null;
+    max_lifetime: 60 * 30
   });
 }
 
