@@ -1,43 +1,32 @@
-# Bakery POS Software (SvelteKit + Neon PostgreSQL)
+# Bakery POS Software (SvelteKit Serverless Demo)
 
-Sample frontend ko existing `bakery_pos_sales_checkout/code.html` style ke basis par SvelteKit mein convert kiya gaya hai. Data (categories, products, cart) Neon PostgreSQL se aa raha hai.
+Yeh project ab pure **serverless fake-data mode** mein hai.
+Koi PostgreSQL/Neon dependency nahi hai.
 
 ## Stack
 - SvelteKit
 - Tailwind CSS
-- Neon PostgreSQL (via `postgres` driver)
+- In-memory fake backend store (server routes)
 
-## Setup
-1. Dependencies install karo:
-   ```bash
-   npm install
-   ```
-2. `.env.example` ko copy karke `.env` banao aur Neon `DATABASE_URL` set karo.
-3. DB schema + sample data seed karo:
-   ```bash
-   npm run db:seed
-   ```
-4. Dev server run karo:
-   ```bash
-   npm run dev
-   ```
+## Run
+```bash
+npm install
+npm run dev
+```
 
-## Included DB schema
-- `categories`
-- `products`
-- `sales_orders`
-- `sales_order_items`
-
-Schema file: `db/schema.sql`
+## Important
+- Data in-memory hai, restart par reset ho jata hai.
+- Inventory add/category add, cart updates, payment method, complete sale, receipt print sab fake backend par chal rahe hain.
 
 ## API endpoints
 - `GET /api/products?categoryId=<id>`
 - `GET /api/cart`
 - `POST /api/cart` with `{ "productId": number, "delta": number }`
+- `PATCH /api/cart` with `{ "paymentMethod": "Cash" | "Card" | "QR" }`
 - `DELETE /api/cart`
-
-## Existing source references used
-- `bakery_pos_sales_checkout/code.html`
-- `bakery_inventory_records/screen.png`
-- `bakery_purchase_history/screen.png`
-- `bakery_pos_sales_checkout/screen.png`
+- `POST /api/cart/complete`
+- `GET /api/cart/receipt`
+- `GET /api/inventory`
+- `GET /api/inventory/categories`
+- `POST /api/inventory/categories`
+- `POST /api/inventory/products`
