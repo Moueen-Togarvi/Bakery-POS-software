@@ -7,7 +7,11 @@
     "dev": "vite dev",
     "build": "svelte-kit sync && vite build",
     "preview": "vite preview",
-    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json"
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "vercel:build": "vercel build",
+    "vercel:verify": "node scripts/verify-vercel-output.mjs",
+    "vercel:deploy:prebuilt": "npm run vercel:build && npm run vercel:verify && vercel deploy --prebuilt --prod",
+    "vercel:deploy": "vercel --prod --force"
   },
   "devDependencies": {
     "@sveltejs/adapter-auto": "^4.0.0",

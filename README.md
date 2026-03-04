@@ -14,6 +14,20 @@ npm install
 npm run dev
 ```
 
+## Vercel Deploy
+Recommended deploy:
+```bash
+npm run vercel:deploy
+```
+
+Prebuilt deploy (safe flow):
+```bash
+npm run vercel:deploy:prebuilt
+```
+
+Do not run `npm run build` and then `vercel deploy --prebuilt`.
+Use `vercel build` (included in `npm run vercel:deploy:prebuilt`) so `.vercel/output` is complete.
+
 ## Important
 - Data in-memory hai, restart par reset ho jata hai.
 - Inventory add/category add, cart updates, payment method, complete sale, receipt print sab fake backend par chal rahe hain.
