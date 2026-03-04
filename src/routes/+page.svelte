@@ -410,60 +410,61 @@
     <!-- Recent Sales Section -->
     <div class="mt-auto border-t border-primary/10 bg-slate-50 p-3 max-h-[300px] flex flex-col">
       <h3 class="mb-2 text-xs font-bold text-slate-800 uppercase tracking-wider">Recent Sales</h3>
-      <div class="no-scrollbar flex-1 overflow-y-auto space-y-2">
-        {#each recentOrders.slice(0, 5) as order}
-          <div class="rounded-xl border border-primary/10 bg-white p-2.5 shadow-sm">
-            <div class="flex items-start justify-between gap-3">
-              <div class="flex min-w-0 items-start gap-3">
-                <div class={`rounded-full p-1.5 ${order.status === 'returned' ? 'bg-red-50 text-red-500' : 'bg-emerald-50 text-emerald-500'}`}>
-                  <span class="material-symbols-outlined text-lg">{order.status === 'returned' ? 'undo' : 'check_circle'}</span>
-                </div>
-                <div class="min-w-0">
-                  <p class="truncate text-xs font-bold text-slate-900">{order.orderNo}</p>
-                  <p class="truncate text-[11px] text-slate-600">{order.customerName || 'Walk-in Customer'}</p>
-                  <div class="mt-0.5 flex flex-wrap items-center gap-1">
-                    <span class="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-700">{order.paymentMethod}</span>
-                    <span class="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">{order.itemCount} items</span>
-                    <span class={`rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ${order.status === 'returned' ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'}`}>
-                      {order.status}
-                    </span>
-                  </div>
-                  <p class="mt-0.5 text-[10px] text-slate-400">{new Date(order.issuedAt).toLocaleString()}</p>
-                </div>
-              </div>
-
-              <div class="text-right">
-                <p class="text-sm font-bold text-slate-900">{formatCurrency(order.total)}</p>
-                <p class="text-[10px] text-slate-500">Sub: {formatCurrency(order.subtotal)}</p>
-                <p class="text-[10px] text-slate-500">Tax: {formatCurrency(order.tax)}</p>
-              </div>
-            </div>
-
-            <div class="mt-2 flex items-center justify-end gap-1.5">
-              <button
-                class="flex items-center gap-1 rounded-lg bg-slate-100 px-2.5 py-1.5 text-[10px] font-bold text-slate-700 hover:bg-slate-200"
-                on:click={() => printInvoice(order.id)}
-                disabled={cartLoading}
-              >
-                <span class="material-symbols-outlined text-[14px]">print</span>
-                Print
-              </button>
-              {#if order.status !== 'returned'}
-                <button
-                  class="flex items-center gap-1 rounded-lg bg-red-50 px-2.5 py-1.5 text-[10px] font-bold text-red-700 hover:bg-red-100"
-                  on:click={() => returnOrder(order.id)}
-                  disabled={cartLoading}
-                >
-                  <span class="material-symbols-outlined text-[14px]">undo</span>
-                  Return
-                </button>
-              {/if}
-            </div>
-          </div>
-        {/each}
-        {#if recentOrders.length === 0}
-          <p class="py-4 text-center text-xs italic text-slate-400">No recent sales found.</p>
-        {/if}
+      <div class="no-scrollbar flex-1 overflow-y-auto">
+        <table class="w-full text-left text-xs">
+          <thead class="bg-primary/5 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+            <tr>
+              <th class="px-2 py-2">Order No</th>
+              <th class="px-2 py-2">Customer</th>
+              <th class="px-2 py-2">Method</th>
+              <th class="px-2 py-2">Items</th>
+              <th class="px-2 py-2">Status</th>
+              <th class="px-2 py-2">Date</th>
+              <th class="px-2 py-2">Total</th>
+              <th class="px-2 py-2">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-primary/5">
+            {#each recentOrders.slice(0, 5) as order}
+              <tr class="group hover:bg-slate-50 transition-colors">
+                <td class="px-2 py-2 font-bold text-slate-900">{order.orderNo}</td>
+                <td class="px-2 py-2 text-slate-600">{order.customerName || 'Walk-in Customer'}</td>
+                <td class="px-2 py-2 text-slate-700">{order.paymentMethod}</td>
+                <td class="px-2 py-2 text-amber-700">{order.itemCount}</td>
+                <td class="px-2 py-2">
+                  <span class={`rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ${order.status === 'returned' ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'}`}>{order.status}</span>
+                </td>
+                <td class="px-2 py-2 text-slate-400">{new Date(order.issuedAt).toLocaleString()}</td>
+                <td class="px-2 py-2 font-bold text-slate-900">{formatCurrency(order.total)}</td>
+                <td class="px-2 py-2">
+                  <button
+                    class="flex items-center gap-1 rounded-lg bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-700 hover:bg-slate-200"
+                    on:click={() => printInvoice(order.id)}
+                    disabled={cartLoading}
+                  >
+                    <span class="material-symbols-outlined text-[14px]">print</span>
+                    Print
+                  </button>
+                  {#if order.status !== 'returned'}
+                    <button
+                      class="flex items-center gap-1 rounded-lg bg-red-50 px-2 py-1 text-[10px] font-bold text-red-700 hover:bg-red-100"
+                      on:click={() => returnOrder(order.id)}
+                      disabled={cartLoading}
+                    >
+                      <span class="material-symbols-outlined text-[14px]">undo</span>
+                      Return
+                    </button>
+                  {/if}
+                </td>
+              </tr>
+            {/each}
+            {#if recentOrders.length === 0}
+              <tr>
+                <td colspan="8" class="py-4 text-center text-xs italic text-slate-400">No recent sales found.</td>
+              </tr>
+            {/if}
+          </tbody>
+        </table>
       </div>
     </div>
   </section>
