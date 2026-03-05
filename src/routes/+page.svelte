@@ -253,7 +253,10 @@
     const lineRows = rcpt.items
       .map(
         (item: any) =>
-          `<tr><td style="padding:6px 0;">${item.name}${item.flavor ? ` (${item.flavor})` : ''} (${item.quantity} ${item.unitType})</td><td style="text-align:right;">${formatCurrency(item.lineTotal)}</td></tr>`
+          `<tr>
+            <td class="item-name">${item.name}${item.flavor ? ` (${item.flavor})` : ''} (${item.quantity} ${item.unitType})</td>
+            <td class="right">${formatCurrency(item.lineTotal)}</td>
+          </tr>`
       )
       .join('');
 
@@ -263,36 +266,47 @@
     <title>${rcpt.receiptNo}</title>
     <style>
       @page { margin: 0; size: 58mm auto; }
-      body { font-family: 'Courier New', Courier, monospace; font-size: 12px; margin: 0; padding: 5mm; width: 48mm; color: #000; overflow-wrap: break-word; }
-      h2 { margin: 0 0 10px; font-size: 14px; text-align: center; text-transform: uppercase; }
-      p { margin: 2px 0; line-height: 1.2; }
-      table { width: 100%; border-collapse: collapse; margin: 5px 0; }
-      td, th { padding: 4px 0; text-align: left; vertical-align: top; }
-      td.right, th.right { text-align: right; }
-      .totals { width: 100%; margin-top: 5px; }
-      .totals td { padding: 2px 0; }
-      .bold { font-weight: bold; }
-      hr { border: none; border-top: 1px dashed #000; margin: 5px 0; }
+      body { 
+        font-family: 'Courier New', Courier, monospace; 
+        font-size: 14px; 
+        margin: 0; 
+        padding: 4mm 2mm; 
+        width: 54mm; 
+        color: #000; 
+        line-height: 1.1;
+      }
+      h2 { margin: 0 0 8px; font-size: 16px; text-align: center; text-transform: uppercase; border-bottom: 2px solid #000; padding-bottom: 4px; }
+      p { margin: 1px 0; }
+      table { width: 100%; border-collapse: collapse; margin: 4px 0; }
+      td, th { padding: 3px 0; text-align: left; vertical-align: top; }
+      .right { text-align: right; white-space: nowrap; }
+      .item-name { padding-right: 4px; }
+      .totals { width: 100%; margin-top: 4px; border-top: 1px solid #000; padding-top: 4px; }
+      .totals td { padding: 1px 0; font-size: 13px; }
+      .grand-total { border-top: 2px solid #000; margin-top: 4px; padding-top: 4px; font-weight: 900; font-size: 16px; }
+      hr { border: none; border-top: 1px dashed #000; margin: 4px 0; }
       .center { text-align: center; }
+      .small { font-size: 11px; color: #444; }
     </style>
   </head>
   <body>
     <h2>${storeName}</h2>
-    <p>Receipt: ${rcpt.receiptNo}</p>
-    <p>Order: ${rcpt.orderNo}</p>
-    <p>Payment: ${rcpt.paymentMethod}</p>
+    <div class="small center">
+      <p>Receipt: ${rcpt.receiptNo}</p>
+      <p>${new Date(rcpt.issuedAt).toLocaleString()}</p>
+    </div>
     <hr />
-    <table>${lineRows.replace(/style="[^"]*"/g, '').replace(/<td(?=>)/g, '<td>').replace(/<td(>)/g, '<td>').replace(/<td style="text-align:right;">/g, '<td class="right">')}</table>
+    <table>${lineRows}</table>
+    <div class="totals">
+      <table>
+        <tr><td>Subtotal:</td><td class="right">${formatCurrency(rcpt.subtotal)}</td></tr>
+        <tr><td>Tax:</td><td class="right">${formatCurrency(rcpt.tax)}</td></tr>
+        <tr class="grand-total"><td class="bold">TOTAL:</td><td class="right bold">${formatCurrency(rcpt.total)}</td></tr>
+      </table>
+    </div>
     <hr />
-    <table class="totals">
-      <tr><td>Subtotal:</td><td class="right">${formatCurrency(rcpt.subtotal)}</td></tr>
-      <tr><td>Tax:</td><td class="right">${formatCurrency(rcpt.tax)}</td></tr>
-    </table>
-    <hr />
-    <table class="totals">
-      <tr><td class="bold" style="font-size: 14px;">TOTAL:</td><td class="right bold" style="font-size: 14px;">${formatCurrency(rcpt.total)}</td></tr>
-    </table>
-    <p class="center" style="margin-top: 15px;">Thank you for your visit!</p>
+    <p class="small center">Payment Method: ${rcpt.paymentMethod}</p>
+    <p class="center" style="margin-top: 10px; font-weight: bold;">THANK YOU!</p>
   </body>
 </html>`;
 
@@ -330,12 +344,12 @@
         <p class="mt-0.5 text-lg font-bold text-amber-700">{products.length}</p>
       </article>
       <article class="rounded-xl bg-sky-50 p-2">
-        <p class="text-[10px] font-semibold text-slate-600 uppercase tracking-tight">Today's Profit</p>
-        <p class="mt-0.5 text-lg font-bold {Number(data.todayProfit || 0) < 0 ? 'text-red-600' : 'text-sky-700'}">
-          {formatCurrency(data.todayProfit || 0)}
+        <p class="text-[10px] font-semibold text-slate-600 uppercase tracking-tight">Today's Net</p>
+        <p class="mt-0.5 text-lg font-bold text-sky-700">
+          {formatCurrency(data.todayNetSales || 0)}
         </p>
         <p class="mt-1 text-[9px] text-slate-500">
-          Selling - Buying = Profit
+          Sales excluding Tax
         </p>
       </article>
     </div>

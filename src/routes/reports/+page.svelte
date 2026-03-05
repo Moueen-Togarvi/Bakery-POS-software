@@ -77,36 +77,47 @@
     <title>${receipt.receiptNo}</title>
     <style>
       @page { margin: 0; size: 58mm auto; }
-      body { font-family: 'Courier New', Courier, monospace; font-size: 12px; margin: 0; padding: 5mm; width: 48mm; color: #000; overflow-wrap: break-word; }
-      h2 { margin: 0 0 10px; font-size: 14px; text-align: center; text-transform: uppercase; }
-      p { margin: 2px 0; line-height: 1.2; }
-      table { width: 100%; border-collapse: collapse; margin: 5px 0; }
-      td, th { padding: 4px 0; text-align: left; vertical-align: top; }
-      td.right, th.right { text-align: right; }
-      .totals { width: 100%; margin-top: 5px; }
-      .totals td { padding: 2px 0; }
-      .bold { font-weight: bold; }
-      hr { border: none; border-top: 1px dashed #000; margin: 5px 0; }
+      body { 
+        font-family: 'Courier New', Courier, monospace; 
+        font-size: 14px; 
+        margin: 0; 
+        padding: 4mm 2mm; 
+        width: 54mm; 
+        color: #000; 
+        line-height: 1.1;
+      }
+      h2 { margin: 0 0 8px; font-size: 16px; text-align: center; text-transform: uppercase; border-bottom: 2px solid #000; padding-bottom: 4px; }
+      p { margin: 1px 0; }
+      table { width: 100%; border-collapse: collapse; margin: 4px 0; }
+      td, th { padding: 3px 0; text-align: left; vertical-align: top; }
+      .right { text-align: right; white-space: nowrap; }
+      .item-name { padding-right: 4px; }
+      .totals { width: 100%; margin-top: 4px; border-top: 1px solid #000; padding-top: 4px; }
+      .totals td { padding: 1px 0; font-size: 13px; }
+      .grand-total { border-top: 2px solid #000; margin-top: 4px; padding-top: 4px; font-weight: 900; font-size: 16px; }
+      hr { border: none; border-top: 1px dashed #000; margin: 4px 0; }
       .center { text-align: center; }
+      .small { font-size: 11px; color: #444; }
     </style>
   </head>
   <body>
-    <h2>${storeName} Invoice</h2>
-    <p>Receipt: ${receipt.receiptNo}</p>
-    <p>Order: ${receipt.orderNo}</p>
-    <p>Payment: ${receipt.paymentMethod}</p>
-    <p>Date: ${new Date(receipt.issuedAt).toLocaleString()}</p>
+    <h2>${storeName}</h2>
+    <div class="small center">
+      <p>Receipt: ${receipt.receiptNo}</p>
+      <p>${new Date(receipt.issuedAt).toLocaleString()}</p>
+    </div>
     <hr />
-    <table>${lineRows.replace(/style="[^"]*"/g, '').replace(/<td(?=>)/g, '<td>').replace(/<td(>)/g, '<td>').replace(/<td style="text-align:right;">/g, '<td class="right">')}</table>
+    <table>${lineRows}</table>
+    <div class="totals">
+      <table>
+        <tr><td>Subtotal:</td><td class="right">${formatCurrency(receipt.subtotal)}</td></tr>
+        <tr><td>Tax:</td><td class="right">${formatCurrency(receipt.tax)}</td></tr>
+        <tr class="grand-total"><td class="bold">TOTAL:</td><td class="right bold">${formatCurrency(receipt.total)}</td></tr>
+      </table>
+    </div>
     <hr />
-    <table class="totals">
-      <tr><td>Subtotal:</td><td class="right">${formatCurrency(receipt.subtotal)}</td></tr>
-      <tr><td>Tax:</td><td class="right">${formatCurrency(receipt.tax)}</td></tr>
-    </table>
-    <hr />
-    <table class="totals">
-      <tr><td class="bold" style="font-size: 14px;">TOTAL:</td><td class="right bold" style="font-size: 14px;">${formatCurrency(receipt.total)}</td></tr>
-    </table>
+    <p class="small center">Payment Method: ${receipt.paymentMethod}</p>
+    <p class="center" style="margin-top: 10px; font-weight: bold;">THANK YOU!</p>
   </body>
 </html>`;
 

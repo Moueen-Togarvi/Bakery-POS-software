@@ -385,7 +385,8 @@ export async function getSalesReport(options?: {
       baseParams.push(baseDate);
       baseFilters.push(`o.receipt_issued_at::date = $${baseParams.length}::date`);
     } else {
-      baseFilters.push(`o.receipt_issued_at::date = CURRENT_DATE`);
+      // Use UTC+5 (Karachi time) to determine the start of "Today"
+      baseFilters.push(`o.receipt_issued_at >= (NOW() + INTERVAL '5 hours')::date - INTERVAL '5 hours'`);
     }
   }
   if (period === 'weekly') {

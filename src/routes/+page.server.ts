@@ -17,6 +17,7 @@ export const load: PageServerLoad = async () => {
       cart,
       recentOrders,
       todaySales: todayReport.totalRevenue,
+      todayNetSales: todayReport.netSales,
       todayOrders: todayReport.totalOrders,
       todayProfit: todayReport.grossProfit,
       dbOffline: false,

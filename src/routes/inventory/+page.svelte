@@ -150,6 +150,7 @@
 
       busy = true;
       try {
+          const skuValue = productSku.trim() || null;
           const res = await fetch('/api/inventory/products', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -160,13 +161,14 @@
                   buyingPrice,
                   imageUrl: productImage,
                   stock: Number(productStock || 0),
-                  sku: productSku || null,
+                  sku: skuValue,
                   unitType: productUnitType,
                   flavor: productFlavor || null
               })
           });
           const body = await res.json();
           if (!res.ok) {
+              console.error('Save product error:', body);
               infoMessage = body.message ?? 'Product add failed.';
               return;
           }
@@ -174,6 +176,9 @@
           resetProductForm();
           infoMessage = 'Product added successfully.';
           await refreshInventory();
+      } catch (err) {
+          console.error('Network/Save error:', err);
+          infoMessage = 'Network error while saving product.';
       } finally {
           busy = false;
       }
@@ -201,6 +206,7 @@
 
     busy = true;
     try {
+      const skuValue = editSku.trim() || null;
       const res = await fetch('/api/inventory/products', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -212,13 +218,14 @@
           buyingPrice,
           imageUrl: editImage,
           stock: Number(editStock || 0),
-          sku: editSku || null,
+          sku: skuValue,
           unitType: editUnitType,
           flavor: editFlavor || null
         })
       });
       const body = await res.json();
       if (!res.ok) {
+        console.error('Update product error:', body);
         infoMessage = body.message ?? 'Product update failed.';
         return;
       }
@@ -227,6 +234,9 @@
       editProductId = null;
       infoMessage = 'Product updated successfully.';
       await refreshInventory();
+    } catch (err) {
+      console.error('Update error:', err);
+      infoMessage = 'Network error while updating product.';
     } finally {
       busy = false;
     }
