@@ -212,15 +212,23 @@
       const buyingPrice = Number(productBuyingPrice || 0);
 
       if (!name) {
-          toastStore.error('Product name required.');
+          toastStore.error('Product name is required.');
           return;
       }
-      if (!Number.isFinite(price) || price < 0) {
-          toastStore.error('Valid selling price required.');
+      if (!selectedCategoryId) {
+          toastStore.error('Please select a category.');
           return;
       }
-      if (!Number.isFinite(buyingPrice) || buyingPrice < 0) {
-          toastStore.error('Valid buying price required.');
+      if (!productFlavor.trim()) {
+          toastStore.error('Flavor is required.');
+          return;
+      }
+      if (!Number.isFinite(price) || price <= 0) {
+          toastStore.error('Valid selling price is required.');
+          return;
+      }
+      if (!Number.isFinite(buyingPrice) || buyingPrice <= 0) {
+          toastStore.error('Valid buying price is required.');
           return;
       }
 
@@ -268,15 +276,23 @@
     const buyingPrice = Number(editBuyingPrice || 0);
 
     if (!name) {
-      toastStore.error('Product name required.');
+      toastStore.error('Product name is required.');
       return;
     }
-    if (!Number.isFinite(price) || price < 0) {
-      toastStore.error('Valid selling price required.');
+    if (!editCategoryId) {
+      toastStore.error('Please select a category.');
       return;
     }
-    if (!Number.isFinite(buyingPrice) || buyingPrice < 0) {
-      toastStore.error('Valid buying price required.');
+    if (!editFlavor.trim()) {
+      toastStore.error('Flavor is required.');
+      return;
+    }
+    if (!Number.isFinite(price) || price <= 0) {
+      toastStore.error('Valid selling price is required.');
+      return;
+    }
+    if (!Number.isFinite(buyingPrice) || buyingPrice <= 0) {
+      toastStore.error('Valid buying price is required.');
       return;
     }
 
@@ -376,7 +392,11 @@
           canvas.width = width;
           canvas.height = height;
           const ctx = canvas.getContext('2d');
-          ctx?.drawImage(img, 0, 0, width, height);
+          if (ctx) {
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(0, 0, width, height);
+            ctx.drawImage(img, 0, 0, width, height);
+          }
 
           canvas.toBlob(
             (blob) => {
@@ -567,21 +587,21 @@
                   Quick Add Product
                 </h3>
                 <div class="grid grid-cols-1 gap-3 md:grid-cols-12">
-                    <div class="md:col-span-4">
+                    <div class="md:col-span-3">
                         <label for="product-name" class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Name <span class="text-red-500">*</span></label>
-                        <input id="product-name" class="w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-primary" placeholder="Product name" bind:value={productName} />
+                        <input id="product-name" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs outline-none focus:border-primary" placeholder="Product name" bind:value={productName} />
                     </div>
                     <div class="md:col-span-3">
                         <label for="product-category" class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Category <span class="text-red-500">*</span></label>
-                        <select id="product-category" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 outline-none focus:border-primary" bind:value={selectedCategoryId}>
+                        <select id="product-category" class="w-full h-[38px] rounded-lg border border-slate-200 bg-white px-3 text-xs outline-none focus:border-primary" bind:value={selectedCategoryId}>
                             {#each categories as category}
                                 <option value={category.id}>{category.name}</option>
                             {/each}
                         </select>
                     </div>
-                    <div class="md:col-span-2">
+                    <div class="md:col-span-3">
                         <label for="product-unit" class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Unit</label>
-                        <select id="product-unit" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 outline-none focus:border-primary" bind:value={productUnitType}>
+                        <select id="product-unit" class="w-full h-[38px] rounded-lg border border-slate-200 bg-white px-3 text-xs outline-none focus:border-primary" bind:value={productUnitType}>
                             {#each unitOptions as unit}
                                 <option value={unit}>{unit}</option>
                             {/each}
@@ -589,43 +609,51 @@
                     </div>
                     <div class="md:col-span-3">
                         <label for="product-sku" class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Barcode</label>
-                        <input id="product-sku" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-[11px] outline-none focus:border-primary" placeholder="SKU/Barcode" bind:value={productSku} />
+                        <input id="product-sku" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs outline-none focus:border-primary" placeholder="SKU/Barcode" bind:value={productSku} />
                     </div>
 
                     <div class="md:col-span-2">
-                        <label for="product-buying-price" class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Buying Price <span class="text-red-500">*</span></label>
-                        <input id="product-buying-price" class="w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-primary" placeholder="0.00" type="number" bind:value={productBuyingPrice} />
+                        <label for="product-buying-price" class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Buying <span class="text-red-500">*</span></label>
+                        <input id="product-buying-price" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs outline-none focus:border-primary" placeholder="0.00" type="number" bind:value={productBuyingPrice} />
                     </div>
                     <div class="md:col-span-2">
-                        <label for="product-selling-price" class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Selling Price <span class="text-red-500">*</span></label>
-                        <input id="product-selling-price" class="w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-primary" placeholder="0.00" type="number" bind:value={productSellingPrice} />
+                        <label for="product-selling-price" class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Selling <span class="text-red-500">*</span></label>
+                        <input id="product-selling-price" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs outline-none focus:border-primary" placeholder="0.00" type="number" bind:value={productSellingPrice} />
                     </div>
                     <div class="md:col-span-2">
                         <label for="product-stock" class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Stock <span class="text-red-500">*</span></label>
-                        <input id="product-stock" class="w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-primary" placeholder="0" type="number" bind:value={productStock} />
+                        <input id="product-stock" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs outline-none focus:border-primary" placeholder="0" type="number" bind:value={productStock} />
                     </div>
-                    <div class="md:col-span-1">
+                    <div class="md:col-span-2">
                         <label for="product-flavor" class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Flavor <span class="text-red-500">*</span></label>
-                        <input id="product-flavor" class="w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-primary" placeholder="e.g. Vanilla" bind:value={productFlavor} />
+                        <input id="product-flavor" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs outline-none focus:border-primary" placeholder="Vanilla" bind:value={productFlavor} />
                     </div>
-                    <div class="md:col-span-5">
+                    <div class="md:col-span-4">
                         <p class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Image</p>
                         <div class="flex items-center gap-2">
                             <input type="file" accept="image/*" class="hidden" id="fileInput" onchange={handleFileUpload} />
-                            <label for="fileInput" class="cursor-pointer rounded-md border border-primary/20 bg-primary/5 px-2.5 py-2 text-[10px] font-bold text-primary hover:bg-primary/10 flex items-center gap-2">
+                            <label for="fileInput" class="cursor-pointer h-[38px] min-w-[100px] rounded-lg border border-primary/20 bg-primary/5 px-3 text-[10px] font-bold text-primary hover:bg-primary/10 flex items-center justify-center transition-colors">
                                 {#if uploading}
                                   <div class="h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
-                                  Uploading...
                                 {:else}
-                                  Upload Image
+                                  <span class="material-symbols-outlined text-sm mr-1">upload</span>
+                                  Upload
                                 {/if}
                             </label>
-                            <input class="h-[34px] flex-1 rounded-md border border-slate-200 px-2 text-[11px] text-slate-600" readonly value={productImage ? 'Image linked' : 'No image selected'} />
+                            <input class="h-[38px] w-28 rounded-lg border border-slate-100 bg-slate-50 px-3 text-[10px] text-slate-400 truncate" readonly value={productImage ? 'Image linked ✓' : 'No image'} />
                         </div>
                     </div>
 
                     <div class="md:col-span-12">
-                        <div class="flex justify-end gap-2">
+                        <div class="flex justify-end gap-3">
+                          <button 
+                            type="button" 
+                            class="rounded-lg border border-slate-200 px-5 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors" 
+                            onclick={resetProductForm}
+                            disabled={busy}
+                          >
+                            Cancel
+                          </button>
                           <button class="rounded-lg bg-primary px-5 py-2.5 text-xs font-bold text-white shadow-sm transition-colors hover:bg-primary-dark inline-flex items-center gap-2" onclick={saveProduct} disabled={busy}>
                               {#if busy}
                                   <div class="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
@@ -684,6 +712,7 @@
                 <table class="w-full text-left compact-table">
                     <thead class="bg-slate-50 text-slate-500 font-bold text-[10px] uppercase tracking-wider">
                         <tr>
+                            <th class="px-4 py-3">Image</th>
                             <th class="px-4 py-3">Product Info</th>
                             <th class="px-4 py-3">Category</th>
                             <th class="px-4 py-3 text-center">Flavor</th>
@@ -698,6 +727,16 @@
                     <tbody class="divide-y divide-slate-50">
                         {#each filteredRows as row}
                             <tr class="hover:bg-slate-50/50 transition-colors">
+                                <td class="px-4 py-3">
+                                  <div class="h-10 w-10 overflow-hidden rounded-lg bg-slate-100 border border-slate-200">
+                                    <img 
+                                      class="h-full w-full object-cover" 
+                                      src={row.imageUrl || '/assets/checkout-screen.png'} 
+                                      alt={row.name} 
+                                      onerror={(e) => (e.currentTarget.src = '/assets/checkout-screen.png')}
+                                    />
+                                  </div>
+                                </td>
                                 <td class="px-4 py-3">
                                     <div class="font-bold text-slate-900">{row.name}</div>
                                     {#if row.sku}
@@ -758,7 +797,7 @@
       </div>
 
       <div class="grid grid-cols-1 gap-4 md:grid-cols-12">
-        <div class="md:col-span-4">
+        <div class="md:col-span-3">
           <label for="edit-product-name" class="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Name <span class="text-red-500">*</span></label>
           <input id="edit-product-name" class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all" bind:value={editProductName} />
         </div>
@@ -770,7 +809,7 @@
             {/each}
           </select>
         </div>
-        <div class="md:col-span-2">
+        <div class="md:col-span-3">
           <label for="edit-product-unit" class="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Unit</label>
           <select id="edit-product-unit" class="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all" bind:value={editUnitType}>
             {#each unitOptions as unit}
@@ -784,46 +823,45 @@
         </div>
 
         <div class="md:col-span-2">
-          <label for="edit-buying-price" class="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Buying Price <span class="text-red-500">*</span></label>
-          <input id="edit-buying-price" class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all" type="number" bind:value={editBuyingPrice} />
+          <label for="edit-buying-price" class="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Buying <span class="text-red-500">*</span></label>
+          <input id="edit-buying-price" class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-xs outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all" type="number" bind:value={editBuyingPrice} />
         </div>
         <div class="md:col-span-2">
-          <label for="edit-selling-price" class="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Selling Price <span class="text-red-500">*</span></label>
-          <input id="edit-selling-price" class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all" type="number" bind:value={editSellingPrice} />
+          <label for="edit-selling-price" class="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Selling <span class="text-red-500">*</span></label>
+          <input id="edit-selling-price" class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-xs outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all" type="number" bind:value={editSellingPrice} />
         </div>
         <div class="md:col-span-2">
           <label for="edit-stock" class="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Stock</label>
-          <input id="edit-stock" class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all" type="number" bind:value={editStock} />
+          <input id="edit-stock" class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-xs outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all" type="number" bind:value={editStock} />
         </div>
         <div class="md:col-span-2">
-          <label for="edit-flavor" class="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Flavor</label>
-          <input id="edit-flavor" class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all" bind:value={editFlavor} />
+          <label for="edit-flavor" class="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Flavor <span class="text-red-500">*</span></label>
+          <input id="edit-flavor" class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-xs outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all" bind:value={editFlavor} />
         </div>
         <div class="md:col-span-4">
           <p class="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Image</p>
           <div class="flex items-center gap-2">
             <input type="file" accept="image/*" class="hidden" id="editFileInput" onchange={handleEditFileUpload} />
-            <label for="editFileInput" class="cursor-pointer rounded-xl border border-primary/20 bg-primary/5 px-4 py-2.5 text-[10px] font-bold text-primary hover:bg-primary/10 flex items-center gap-2 transition-colors">
+            <label for="editFileInput" class="cursor-pointer rounded-xl border border-primary/20 bg-primary/5 px-3 h-[42px] text-[10px] font-bold text-primary hover:bg-primary/10 flex items-center justify-center min-w-[100px] transition-colors">
               {#if uploading}
                 <div class="h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
-                Updating...
               {:else}
-                <span class="material-symbols-outlined text-sm">upload</span>
+                <span class="material-symbols-outlined text-sm mr-1">upload</span>
                 Upload
               {/if}
             </label>
-            <input class="h-[42px] flex-1 rounded-xl border border-slate-100 bg-slate-50 px-3 text-[11px] text-slate-400" readonly value={editImage ? 'Image linked ✓' : 'No image selected'} />
+            <input class="h-[42px] w-32 rounded-xl border border-slate-100 bg-slate-50 px-3 text-[11px] text-slate-400 truncate" readonly value={editImage ? 'Image linked ✓' : 'No image'} />
           </div>
         </div>
       </div>
 
-      <div class="mt-8 flex justify-end gap-3">
-        <button class="rounded-xl border border-slate-200 px-6 py-3 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all" onclick={() => (editModalOpen = false)} disabled={busy}>
+      <div class="mt-8 flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+        <button class="min-w-[120px] rounded-xl border border-slate-200 px-6 py-3 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all active:scale-95" onclick={() => (editModalOpen = false)} disabled={busy}>
           Cancel
         </button>
-        <button class="rounded-xl bg-primary px-8 py-3 text-xs font-bold text-white shadow-lg shadow-primary/20 transition-all hover:bg-primary-dark hover:-translate-y-0.5 inline-flex items-center gap-2" onclick={saveEditedProduct} disabled={busy}>
+        <button class="min-w-[160px] rounded-xl bg-primary px-8 py-3 text-sm font-bold text-white shadow-lg shadow-primary/20 transition-all hover:bg-primary-dark hover:-translate-y-0.5 active:translate-y-0 active:scale-95 inline-flex items-center justify-center gap-2" onclick={saveEditedProduct} disabled={busy}>
           {#if busy}
-            <div class="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+            <div class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
             Saving...
           {:else}
             Save Changes

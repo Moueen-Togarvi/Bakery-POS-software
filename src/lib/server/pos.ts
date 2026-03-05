@@ -14,7 +14,7 @@ const round2 = (v: number) => Number(Number(v).toFixed(2));
 const parseTaxRate = (raw: string | null) => {
   const value = Number(raw);
   if (!Number.isFinite(value) || value < 0) return DEFAULT_TAX_RATE;
-  const ratio = value > 1 ? value / 100 : value;
+  const ratio = value >= 1 ? value / 100 : value;
   return Math.min(1, Math.max(0, ratio));
 };
 

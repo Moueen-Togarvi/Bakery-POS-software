@@ -21,7 +21,7 @@ export const load: PageServerLoad = async () => {
       todayNetSales: todayReport.netSales,
       todayOrders: todayReport.totalOrders,
       todayProfit: todayReport.grossProfit,
-      taxRate: Number(taxRateSetting || 0.20),
+      taxRate: (() => { const v = Number(taxRateSetting); return Number.isFinite(v) && v >= 1 ? v / 100 : (v || 0.20); })(),
       dbOffline: false,
       dbMessage: ''
     };
