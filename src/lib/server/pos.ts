@@ -1,7 +1,7 @@
 import { sql, queryWithRetry } from './db';
 import type { CartSummary, Category, PaymentMethod, Product, SaleReceipt, User, FinanceTransaction, UnitType } from './types';
 
-const DEFAULT_TAX_RATE = 0.08;
+const DEFAULT_TAX_RATE = 0.20;
 const CUSTOMER_NAME = 'Walk-in Customer';
 const SETTINGS_CACHE_TTL_MS = 60_000;
 const settingsCache = new Map<string, { value: string | null; expiresAt: number }>();
@@ -111,6 +111,32 @@ export async function createCategory(name: string): Promise<Category> {
     [normalized]
   );
   return rows[0];
+}
+
+export async function updateCategory(id: number, name: string): Promise<Category> {
+  const normalized = name.trim();
+  if (!normalized) throw new Error('Category name is required');
+  if (id === 0) throw new Error('Cannot update default category');
+
+  const rows = await queryWithRetry(
+    `UPDATE categories SET name = $2 WHERE id = $1 RETURNING id, name`,
+    [id, normalized]
+  );
+  if (!rows.length) throw new Error('Category not found');
+  return rows[0];
+}
+
+export async function deleteCategory(id: number): Promise<void> {
+  if (id === 0) throw new Error('Cannot delete default category');
+
+  // Check if category has products
+  const products = await queryWithRetry('SELECT id FROM products WHERE category_id = $1 LIMIT 1', [id]);
+  if (products.length > 0) {
+    throw new Error('Cannot delete category with products. Please move or delete products first.');
+  }
+
+  const result = await queryWithRetry('DELETE FROM categories WHERE id = $1 RETURNING id', [id]);
+  if (!result.length) throw new Error('Category not found');
 }
 
 export async function createProduct(input: {

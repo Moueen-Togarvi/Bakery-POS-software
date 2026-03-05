@@ -4,13 +4,13 @@
   import { fade, fly } from 'svelte/transition';
 </script>
 
-<div class="fixed bottom-6 left-1/2 z-[100] flex -translate-x-1/2 flex-col gap-3 pointer-events-none">
+<div class="fixed top-6 right-6 z-[100] flex flex-col gap-3 pointer-events-none">
   {#each toastStore.toasts as toast (toast.id)}
     <div
       animate:flip={{ duration: 300 }}
-      in:fly={{ y: 20, duration: 400, opacity: 0 }}
+      in:fly={{ x: 50, duration: 400, opacity: 0 }}
       out:fade={{ duration: 200 }}
-      class="pointer-events-auto flex items-center gap-3 rounded-2xl border border-white/20 bg-slate-900/90 px-5 py-3 text-white shadow-2xl backdrop-blur-xl"
+      class="pointer-events-auto flex items-center gap-3 rounded-2xl border border-white/40 bg-white/70 backdrop-blur-xl px-5 py-3 text-slate-800 shadow-[0_8px_32px_rgba(0,0,0,0.08)] transition-all hover:bg-white/80"
     >
       {#if toast.type === 'success'}
         <span class="material-symbols-outlined text-emerald-400">check_circle</span>

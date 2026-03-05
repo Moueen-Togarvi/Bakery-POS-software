@@ -23,49 +23,58 @@
     total: number;
   };
 
-  export let data: PageData;
+  let { data } = $props();
 
-  let categories = data.categories;
-  let products = data.products;
-  let cart = data.cart;
-  let recentOrders = [...(data.recentOrders ?? [])];
-  let dbOffline = data.dbOffline;
-  let dbMessage = data.dbMessage;
-  let selectedCategoryId = 0;
-  let selectedFlavor = '';
-  let cartLoading = false;
-  let uiMessage = '';
-  let receipt: SaleReceipt | null = null;
-  let showReceipt = false;
-  let barcodeBuffer = '';
-  let lastBarcodeTime = 0;
-  let searchQuery = '';
-  let discountValue = 0;
+  let categories = $state(data.categories);
+  let products = $state(data.products);
+  let cart = $state(data.cart);
+  let recentOrders = $state([...(data.recentOrders ?? [])]);
+  let dbOffline = $state(data.dbOffline);
+  let dbMessage = $state(data.dbMessage);
+  let selectedCategoryId = $state(0);
+  let selectedFlavor = $state('');
+  let cartLoading = $state(false);
+  let uiMessage = $state('');
+  let receipt = $state<SaleReceipt | null>(null);
+  let showReceipt = $state(false);
+  let barcodeBuffer = $state('');
+  let lastBarcodeTime = $state(0);
+  let searchQuery = $state('');
+  let discountValue = $state(0);
   const paymentMethods: PaymentMethod[] = ['Cash', 'Card', 'QR'];
   const fractionalUnits = new Set(['kg', 'lb']);
-  const storeName = data.storeName ?? 'OvenFresh POS';
+  const storeName = $derived(data.storeName ?? 'OvenFresh POS');
 
-  $: cartItemCount = cart.items.reduce((sum, item) => sum + item.quantity, 0);
-  $: maxDiscount = cart.subtotal > 0 ? cart.subtotal : 0;
-  $: rawDiscount = Number(discountValue) || 0;
-  $: discountAmount = Math.min(maxDiscount, Math.max(0, rawDiscount));
-  $: payableTotal = Math.max(0, Number((cart.total - discountAmount).toFixed(2)));
-  $: categoryFlavors = Array.from(
-    new Set(
-      products
-        .filter((p) => selectedCategoryId !== 0 && Number(p.categoryId) === Number(selectedCategoryId))
-        .map((p) => p.flavor)
-        .filter((f): f is string => Boolean(f))
+  let cartItemCount = $derived(cart.items.reduce((sum, item) => sum + item.quantity, 0));
+  let maxDiscount = $derived(cart.subtotal > 0 ? cart.subtotal : 0);
+  let rawDiscount = $derived(Number(discountValue) || 0);
+  let discountAmount = $derived(Math.min(maxDiscount, Math.max(0, rawDiscount)));
+  let payableTotal = $derived(Math.max(0, Number((cart.total - discountAmount).toFixed(2))));
+  let categoryFlavors = $derived(
+    Array.from(
+      new Set(
+        products
+          .filter((p) => selectedCategoryId !== 0 && Number(p.categoryId) === Number(selectedCategoryId))
+          .map((p) => p.flavor)
+          .filter((f): f is string => Boolean(f))
+      )
     )
   );
-  $: if (selectedFlavor && !categoryFlavors.includes(selectedFlavor)) selectedFlavor = '';
-  $: filteredProducts = products.filter(p => {
+  
+  // Effect to clear selected flavor if it's no longer in the list
+  $effect(() => {
+    if (selectedFlavor && !categoryFlavors.includes(selectedFlavor)) {
+      selectedFlavor = '';
+    }
+  });
+
+  let filteredProducts = $derived(products.filter(p => {
     const matchesCategory = selectedCategoryId === 0 || Number(p.categoryId) === Number(selectedCategoryId);
     const matchesSubcategory = !selectedFlavor || p.flavor === selectedFlavor;
     const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (p.sku && p.sku.toLowerCase().includes(searchQuery.toLowerCase()));
     return matchesCategory && matchesSubcategory && matchesSearch;
-  });
+  }));
 
   let barcodeTimeout: ReturnType<typeof setTimeout>;
 
@@ -211,7 +220,10 @@
   }
 
   async function completeSale() {
+    if (cartLoading || cart.items.length === 0) return;
+    
     cartLoading = true;
+    uiMessage = '';
     try {
       const res = await fetch('/api/cart/complete', {
         method: 'POST',
@@ -224,12 +236,22 @@
       const body = await res.json();
       if (!res.ok) {
         uiMessage = body.message ?? 'Sale completion failed.';
+        toastStore.error(uiMessage);
         return;
       }
+      
       receipt = body.receipt;
       cart = body.cart;
-      doPrint(body.receipt);
-      uiMessage = '';
+      showReceipt = true;
+      toastStore.success('Sale completed successfully!');
+      
+      // Force refresh of page data (recent orders, sales stats)
+      await invalidateAll();
+      
+      // Update local reactive state from the newly loaded page data
+      recentOrders = [...(data.recentOrders ?? [])];
+    } catch (err) {
+      toastStore.error('Network error during checkout.');
     } finally {
       cartLoading = false;
     }
@@ -344,7 +366,7 @@
     showReceipt = true;
   }
 
-  let receiptHtml = '';
+  let receiptHtml = $state('');
 
   function triggerPrint() {
     const iframe = document.getElementById('receiptFrame') as HTMLIFrameElement;
@@ -393,7 +415,7 @@
           class="w-full rounded-full border border-primary/20 bg-slate-50 py-1.5 pl-9 pr-4 text-sm focus:border-primary focus:bg-white focus:outline-none"
           placeholder="Scan barcode or search..."
           bind:value={searchQuery}
-          on:keydown={handleSearchEnter}
+          onkeydown={handleSearchEnter}
         />
       </div>
     </div>
@@ -406,7 +428,7 @@
               ? 'bg-primary text-white'
               : 'bg-primary/10 text-slate-700 hover:bg-primary/20'
           }`}
-          on:click={() => { selectedCategoryId = category.name === 'All Items' ? 0 : category.id; selectedFlavor = ''; }}
+          onclick={() => { selectedCategoryId = category.name === 'All Items' ? 0 : category.id; selectedFlavor = ''; }}
         >
           {category.name}
         </button>
@@ -419,7 +441,7 @@
           class={`whitespace-nowrap rounded-full px-3 py-1 text-[11px] font-semibold ${
             !selectedFlavor ? 'bg-amber-500 text-white' : 'bg-amber-50 text-amber-700'
           }`}
-          on:click={() => (selectedFlavor = '')}
+          onclick={() => (selectedFlavor = '')}
         >
           All Subcategories
         </button>
@@ -428,7 +450,7 @@
             class={`whitespace-nowrap rounded-full px-3 py-1 text-[11px] font-semibold ${
               selectedFlavor === flavor ? 'bg-amber-500 text-white' : 'bg-amber-50 text-amber-700'
             }`}
-            on:click={() => (selectedFlavor = flavor)}
+            onclick={() => (selectedFlavor = flavor)}
           >
             {flavor}
           </button>
@@ -438,12 +460,15 @@
 
     <div class="no-scrollbar grid grid-cols-2 gap-2 overflow-y-auto p-3 md:grid-cols-4 xl:grid-cols-6">
       {#if filteredProducts.length === 0}
-        <p class="col-span-full text-sm font-medium text-slate-500">No products found in this category.</p>
+        <div class="col-span-full flex flex-col items-center justify-center py-12 px-4">
+          <img src="/no_products_found_image_1772693709100.png" alt="No products found" class="w-48 h-48 object-contain mb-4 animate-in fade-in zoom-in duration-500" />
+          <p class="text-sm font-medium text-slate-500 text-center">Sorry, no products found in this category!</p>
+        </div>
       {:else}
         {#each filteredProducts as product}
           <button
             class="group flex cursor-pointer flex-col overflow-hidden rounded-lg border border-primary/10 bg-white text-left shadow-sm transition-all hover:border-primary/30 hover:shadow-md"
-            on:click={() => updateCart(product.id, 1)}
+            onclick={() => updateCart(product.id, 1)}
             disabled={cartLoading}
           >
             <div class="relative aspect-[4/3] overflow-hidden bg-slate-50">
@@ -499,7 +524,7 @@
                 <td class="px-2 py-2">
                   <button
                     class="flex items-center gap-1 rounded-lg bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-700 hover:bg-slate-200"
-                    on:click={() => printInvoice(order.id)}
+                    onclick={() => printInvoice(order.id)}
                     disabled={cartLoading}
                   >
                     <span class="material-symbols-outlined text-[14px]">print</span>
@@ -508,7 +533,7 @@
                   {#if order.status !== 'returned'}
                     <button
                       class="flex items-center gap-1 rounded-lg bg-red-50 px-2 py-1 text-[10px] font-bold text-red-700 hover:bg-red-100"
-                      on:click={() => returnOrder(order.id)}
+                      onclick={() => returnOrder(order.id)}
                       disabled={cartLoading}
                     >
                       <span class="material-symbols-outlined text-[14px]">undo</span>
@@ -533,7 +558,7 @@
     <div class="border-b border-primary/5 p-4 shrink-0">
       <div class="mb-2 flex items-center justify-between">
         <h2 class="text-xl font-bold text-slate-900">Current Order</h2>
-        <button class="text-primary" on:click={clearOrder} disabled={cartLoading}>
+        <button class="text-primary" onclick={clearOrder} disabled={cartLoading}>
           <span class="material-symbols-outlined">delete_sweep</span>
         </button>
       </div>
@@ -563,19 +588,19 @@
           </div>
           <div class="flex items-center gap-3">
             <button
-              class="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary"
-              on:click={() => updateCart(item.productId, -getStepByUnit(item.unitType))}
+              class="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary hover:bg-primary/20 active:scale-90 transition-all"
+              onclick={() => updateCart(item.productId, -getStepByUnit(item.unitType))}
               disabled={cartLoading}
             >
-              <span class="material-symbols-outlined text-sm">remove</span>
+              <span class="material-symbols-outlined text-base">remove</span>
             </button>
             <span class="w-12 text-center text-sm font-bold">{item.quantity} {item.unitType}</span>
             <button
-              class="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary"
-              on:click={() => updateCart(item.productId, getStepByUnit(item.unitType))}
+              class="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary hover:bg-primary/20 active:scale-90 transition-all"
+              onclick={() => updateCart(item.productId, getStepByUnit(item.unitType))}
               disabled={cartLoading}
             >
-              <span class="material-symbols-outlined text-sm">add</span>
+              <span class="material-symbols-outlined text-base">add</span>
             </button>
           </div>
           <div class="min-w-[70px] text-right">
@@ -596,7 +621,7 @@
                   ? 'border-primary bg-primary text-white'
                   : 'border-primary/30 bg-white text-slate-700'
               }`}
-              on:click={() => setPaymentMethod(method)}
+              onclick={() => setPaymentMethod(method)}
               disabled={cartLoading}
             >
               {method}
@@ -610,7 +635,7 @@
         <span class="font-medium text-slate-800">{formatCurrency(cart.subtotal)}</span>
       </div>
       <div class="flex justify-between text-sm">
-        <span class="text-slate-500">Tax (8%)</span>
+        <span class="text-slate-500">Tax ({Math.round(data.taxRate * 100)}%)</span>
         <span class="font-medium text-slate-800">{formatCurrency(cart.tax)}</span>
       </div>
       <div class="grid grid-cols-[1fr_auto] items-center gap-2 text-sm">
@@ -635,11 +660,16 @@
       </div>
 
       <button
-        class="mt-2 w-full rounded-lg bg-primary py-2 text-xs font-bold text-white shadow-lg shadow-primary/30"
-        on:click={completeSale}
+        class="mt-2 w-full rounded-lg bg-primary py-3.5 text-sm font-bold text-white shadow-lg shadow-primary/30 inline-flex items-center justify-center gap-2 active:scale-95 transition-all"
+        onclick={completeSale}
         disabled={cartLoading}
       >
-        Complete Sale
+        {#if cartLoading}
+          <div class="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+          Processing...
+        {:else}
+          Complete Sale
+        {/if}
       </button>
     </div>
   </aside>
@@ -650,7 +680,7 @@
     <div class="w-full max-w-sm overflow-hidden rounded-2xl bg-white shadow-2xl">
       <div class="bg-slate-50 border-b border-primary/10 p-4 flex items-center justify-between">
         <h3 class="text-lg font-bold text-slate-900">Print Receipt</h3>
-        <button class="text-slate-400 hover:text-red-500 transition-colors" on:click={() => (showReceipt = false)}>
+        <button class="text-slate-400 hover:text-red-500 transition-colors" onclick={() => (showReceipt = false)}>
           <span class="material-symbols-outlined">close</span>
         </button>
       </div>
@@ -666,11 +696,15 @@
       </div>
 
       <div class="p-4 bg-white grid grid-cols-2 gap-3">
-        <button class="rounded-xl border border-primary px-3 py-3 font-bold text-primary hover:bg-primary/5 transition-colors flex items-center justify-center gap-2" on:click={triggerPrint}>
-          <span class="material-symbols-outlined text-sm">print</span>
-          Print
+        <button class="rounded-xl border border-primary px-3 py-4 font-bold text-primary hover:bg-primary/5 transition-colors flex items-center justify-center gap-2 disabled:opacity-50" onclick={triggerPrint} disabled={cartLoading}>
+          {#if cartLoading}
+            <div class="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+          {:else}
+            <span class="material-symbols-outlined text-sm">print</span>
+            Print
+          {/if}
         </button>
-        <button class="rounded-xl bg-primary px-3 py-3 font-bold text-white hover:bg-primary-dark transition-colors" on:click={() => (showReceipt = false)}>
+        <button class="rounded-xl bg-primary px-3 py-4 font-bold text-white hover:bg-primary-dark transition-colors active:scale-95" onclick={() => (showReceipt = false)}>
           Done
         </button>
       </div>

@@ -56,3 +56,48 @@ body {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* POS Touchscreen Scaling & Targets */
+@media (min-width: 1024px) {
+  html {
+    font-size: 14px; /* Slightly smaller base for 15.6" density */
+  }
+}
+
+/* Ensure touch targets are comfortable */
+button, 
+input, 
+select {
+  min-height: 40px; /* Reliable hit area */
+}
+
+/* Compact specific elements for POS */
+.compact-table td, 
+.compact-table th {
+  padding-top: 0.5rem !important;
+  padding-bottom: 0.5rem !important;
+}
+
+/* Better Scrollbars for Touch */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+/* Prevent text selection during rapid touch interaction */
+.no-select {
+  user-select: none;
+}

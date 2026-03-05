@@ -15,6 +15,8 @@
     if (href === '/') return currentPath === '/';
     return currentPath.startsWith(href);
   }
+
+  let showSupport = $state(false);
 </script>
 
 <header class="sticky top-0 z-30 border-b border-primary/10 bg-white shadow-sm">
@@ -45,13 +47,23 @@
     </nav>
 
     <div class="flex items-center gap-3 justify-self-end">
-      <div class="hidden rounded-lg border border-primary/10 bg-slate-50 px-3 py-1.5 lg:flex lg:flex-row lg:items-center lg:gap-3">
-        <div class="flex flex-col leading-tight">
-          <span class="text-[9px] font-bold uppercase tracking-wider text-slate-400">Support Number</span>
-          <a href="tel:+966557385262" class="text-[13px] font-bold text-slate-800 hover:text-primary">
-            +966-557385262
-          </a>
-        </div>
+      <div class="relative flex items-center">
+        <button 
+          onclick={() => showSupport = !showSupport}
+          class="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary transition-all hover:bg-primary/20" 
+          title="Support Info"
+        >
+          <span class="material-symbols-outlined text-xl">info</span>
+        </button>
+        
+        {#if showSupport}
+          <div class="absolute right-0 top-full mt-2 w-48 rounded-xl border border-primary/10 bg-white p-3 shadow-xl z-50 animate-in fade-in slide-in-from-top-1">
+            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Support Number</p>
+            <a href="tel:+966557385262" class="mt-1 block text-[13px] font-bold text-slate-800 hover:text-primary transition-colors">
+              +966-557385262
+            </a>
+          </div>
+        {/if}
       </div>
       
       <form method="POST" action="/logout">

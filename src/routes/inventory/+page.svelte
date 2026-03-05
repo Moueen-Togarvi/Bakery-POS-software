@@ -20,43 +20,53 @@
     flavor: string | null;
   };
 
-  export let data: PageData;
-  const storeName = data.storeName ?? 'OvenFresh POS';
+  let { data } = $props();
+  const storeName = $derived(data.storeName ?? 'OvenFresh POS');
 
-  let rows: InventoryRow[] = data.rows;
-  let categories: Category[] = data.categories.filter((c) => c.id !== 0);
-  let dbOffline = data.dbOffline;
-  let dbMessage = data.dbMessage;
-  let infoMessage = '';
-  let busy = false;
-  let uploading = false;
+  let rows = $state<InventoryRow[]>(data.rows);
+  let categories = $state<Category[]>(data.categories.filter((c) => c.id !== 0));
+  let dbOffline = $state(data.dbOffline);
+  let dbMessage = $state(data.dbMessage);
+  let busy = $state(false);
+  let uploading = $state(false);
 
-  let categoryName = '';
-  let productName = '';
-  let productSellingPrice = '';
-  let productBuyingPrice = '';
-  let productImage = '';
-  let productStock = '';
-  let productSku = '';
-  let productFlavor = '';
-  let productUnitType = 'pcs';
-  let selectedCategoryId = categories[0]?.id ?? 1;
-  let editModalOpen = false;
-  let editProductId: number | null = null;
-  let editProductName = '';
-  let editSellingPrice = '';
-  let editBuyingPrice = '';
-  let editImage = '';
-  let editStock = '';
-  let editSku = '';
-  let editFlavor = '';
-  let editUnitType = 'pcs';
-  let editCategoryId = categories[0]?.id ?? 1;
+  let categoryName = $state('');
+  let productName = $state('');
+  let productSellingPrice = $state('');
+  let productBuyingPrice = $state('');
+  let productImage = $state('');
+  let productStock = $state('');
+  let productSku = $state('');
+  let productFlavor = $state('');
+  let productUnitType = $state('pcs');
+  let selectedCategoryId = $state(categories[0]?.id ?? 1);
+  let editModalOpen = $state(false);
+  let editProductId = $state<number | null>(null);
+  let editProductName = $state('');
+  let editSellingPrice = $state('');
+  let editBuyingPrice = $state('');
+  let editImage = $state('');
+  let editStock = $state('');
+  let editSku = $state('');
+  let editFlavor = $state('');
+  let editUnitType = $state('pcs');
+  let editCategoryId = $state(categories[0]?.id ?? 1);
   const unitOptions = ['pcs', 'dozen', 'slice', 'loaf', 'tray', 'box', 'pack', 'kg', 'g', 'lb', 'oz', 'liter', 'ml'];
-  let searchDraft = '';
-  let searchTerm = '';
+  let searchDraft = $state('');
+  let searchTerm = $state('');
 
-  $: filteredRows = rows.filter((row) => {
+  // Category Edit/Delete Modal States
+  let categoryEditModalOpen = $state(false);
+  let categoryDeleteModalOpen = $state(false);
+  let categoryToEdit = $state<Category | null>(null);
+  let categoryToDelete = $state<Category | null>(null);
+  let newCategoryName = $state('');
+
+  // Product Delete Modal States
+  let productDeleteModalOpen = $state(false);
+  let productToDelete = $state<InventoryRow | null>(null);
+
+  let filteredRows = $derived(rows.filter((row) => {
     const q = searchTerm.trim().toLowerCase();
     if (!q) return true;
     return (
@@ -65,23 +75,28 @@
       (row.sku || '').toLowerCase().includes(q) ||
       (row.flavor || '').toLowerCase().includes(q)
     );
-  });
+  }));
 
   async function refreshInventory() {
-    const res = await fetch('/api/inventory');
-    const body = await res.json();
-    rows = body.rows;
-    categories = (body.categories as Category[]).filter((c) => c.id !== 0);
-    dbOffline = Boolean(body.dbOffline);
-    if (!categories.some((c) => c.id === selectedCategoryId)) {
-      selectedCategoryId = categories[0]?.id ?? 1;
+    busy = true;
+    try {
+      const res = await fetch('/api/inventory');
+      const body = await res.json();
+      rows = body.rows;
+      categories = (body.categories as Category[]).filter((c) => c.id !== 0);
+      dbOffline = Boolean(body.dbOffline);
+      if (!categories.some((c) => c.id === selectedCategoryId)) {
+        selectedCategoryId = categories[0]?.id ?? 1;
+      }
+    } finally {
+      busy = false;
     }
   }
 
   async function addCategory() {
     const name = categoryName.trim();
     if (!name) {
-      infoMessage = 'Category name required.';
+      toastStore.error('Category name required.');
       return;
     }
     busy = true;
@@ -93,11 +108,71 @@
       });
       const body = await res.json();
       if (!res.ok) {
-        infoMessage = body.message ?? 'Category add failed.';
+        toastStore.error(body.message ?? 'Category add failed.');
         return;
       }
       categoryName = '';
-      infoMessage = 'Category added successfully.';
+      toastStore.success('Category added successfully.');
+      await refreshInventory();
+    } finally {
+      busy = false;
+    }
+  }
+
+  function openCategoryEdit(cat: Category) {
+    categoryToEdit = cat;
+    newCategoryName = cat.name;
+    categoryEditModalOpen = true;
+  }
+
+  async function performCategoryUpdate() {
+    if (!categoryToEdit || !newCategoryName.trim() || newCategoryName.trim() === categoryToEdit.name) {
+      categoryEditModalOpen = false;
+      return;
+    }
+
+    busy = true;
+    try {
+      const res = await fetch('/api/inventory/categories', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: categoryToEdit.id, name: newCategoryName.trim() })
+      });
+      const body = await res.json();
+      if (!res.ok) {
+        toastStore.error(body.message ?? 'Update failed.');
+        return;
+      }
+      toastStore.success('Category updated.');
+      categoryEditModalOpen = false;
+      await refreshInventory();
+    } finally {
+      busy = false;
+    }
+  }
+
+  function openCategoryDelete(cat: Category) {
+    categoryToDelete = cat;
+    categoryDeleteModalOpen = true;
+  }
+
+  async function performCategoryDelete() {
+    if (!categoryToDelete) return;
+
+    busy = true;
+    try {
+      const res = await fetch('/api/inventory/categories', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: categoryToDelete.id })
+      });
+      const body = await res.json();
+      if (!res.ok) {
+        toastStore.error(body.message ?? 'Delete failed.');
+        return;
+      }
+      toastStore.success('Category deleted.');
+      categoryDeleteModalOpen = false;
       await refreshInventory();
     } finally {
       busy = false;
@@ -129,7 +204,6 @@
       const matchedCategory = categories.find((c) => c.name === row.category);
       editCategoryId = matchedCategory?.id ?? selectedCategoryId;
       editModalOpen = true;
-      infoMessage = '';
   }
 
   async function saveProduct() {
@@ -138,15 +212,15 @@
       const buyingPrice = Number(productBuyingPrice || 0);
 
       if (!name) {
-          infoMessage = 'Product name required.';
+          toastStore.error('Product name required.');
           return;
       }
       if (!Number.isFinite(price) || price < 0) {
-          infoMessage = 'Valid selling price required.';
+          toastStore.error('Valid selling price required.');
           return;
       }
       if (!Number.isFinite(buyingPrice) || buyingPrice < 0) {
-          infoMessage = 'Valid buying price required.';
+          toastStore.error('Valid buying price required.');
           return;
       }
 
@@ -171,16 +245,16 @@
           const body = await res.json();
           if (!res.ok) {
               console.error('Save product error:', body);
-              infoMessage = body.message ?? 'Product add failed.';
+              toastStore.error(body.message ?? 'Product add failed.');
               return;
           }
 
           resetProductForm();
-          infoMessage = 'Product added successfully.';
+          toastStore.success('Product added successfully!');
           await refreshInventory();
       } catch (err) {
           console.error('Network/Save error:', err);
-          infoMessage = 'Network error while saving product.';
+          toastStore.error('Network error while saving product.');
       } finally {
           busy = false;
       }
@@ -194,15 +268,15 @@
     const buyingPrice = Number(editBuyingPrice || 0);
 
     if (!name) {
-      infoMessage = 'Product name required.';
+      toastStore.error('Product name required.');
       return;
     }
     if (!Number.isFinite(price) || price < 0) {
-      infoMessage = 'Valid selling price required.';
+      toastStore.error('Valid selling price required.');
       return;
     }
     if (!Number.isFinite(buyingPrice) || buyingPrice < 0) {
-      infoMessage = 'Valid buying price required.';
+      toastStore.error('Valid buying price required.');
       return;
     }
 
@@ -228,42 +302,48 @@
       const body = await res.json();
       if (!res.ok) {
         console.error('Update product error:', body);
-        infoMessage = body.message ?? 'Product update failed.';
+        toastStore.error(body.message ?? 'Product update failed.');
         return;
       }
 
       editModalOpen = false;
       editProductId = null;
-      infoMessage = 'Product updated successfully.';
+      toastStore.success('Product updated successfully.');
       await refreshInventory();
     } catch (err) {
       console.error('Update error:', err);
-      infoMessage = 'Network error while updating product.';
+      toastStore.error('Network error while updating product.');
     } finally {
       busy = false;
     }
   }
 
-  async function removeProduct(id: number, name: string) {
-    if (!confirm(`Delete "${name}"?`)) return;
+  function openProductDelete(row: InventoryRow) {
+    productToDelete = row;
+    productDeleteModalOpen = true;
+  }
+
+  async function performProductDelete() {
+    if (!productToDelete) return;
 
     busy = true;
     try {
       const res = await fetch('/api/inventory/products', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id })
+        body: JSON.stringify({ id: productToDelete.id })
       });
       const body = await res.json();
       if (!res.ok) {
-        infoMessage = body.message ?? 'Delete failed.';
+        toastStore.error(body.message ?? 'Delete failed.');
         return;
       }
-      if (editProductId === id) {
+      if (editProductId === productToDelete.id) {
         editModalOpen = false;
         editProductId = null;
       }
-      infoMessage = 'Product deleted successfully.';
+      toastStore.success('Product deleted successfully.');
+      productDeleteModalOpen = false;
       await refreshInventory();
     } finally {
       busy = false;
@@ -368,11 +448,13 @@
   }
 
   function runSearch() {
+    busy = true;
     searchTerm = searchDraft;
+    setTimeout(() => { busy = false; }, 300);
   }
 
-  let barcodeBuffer = '';
-  let lastBarcodeTime = 0;
+  let barcodeBuffer = $state('');
+  let lastBarcodeTime = $state(0);
   let barcodeTimeout: ReturnType<typeof setTimeout>;
 
   function triggerBarcode() {
@@ -440,19 +522,42 @@
 <main class="min-h-[calc(100vh-69px)] p-3 md:p-4 text-sm bg-slate-50/50">
     <section class="w-full space-y-4">
         <!-- Add Category & Item Row -->
-        <div class="grid grid-cols-1 xl:grid-cols-4 gap-4">
+        <div class="grid grid-cols-1 xl:grid-cols-4 gap-4 items-start">
             <!-- Add Category -->
-            <div class="bg-white rounded-2xl shadow-sm p-4 border border-primary/10">
+            <div class="bg-white rounded-2xl shadow-sm p-4 border border-primary/10 flex flex-col h-full">
                 <h3 class="text-sm font-bold text-slate-900 uppercase tracking-tight mb-3">Add Category</h3>
-                <div class="flex gap-2">
+                <div class="flex gap-2 mb-4">
                     <input
                         class="flex-1 rounded-lg border border-slate-200 px-3 py-1.5 focus:border-primary outline-none transition-all"
                         placeholder="e.g. Biscuits"
                         bind:value={categoryName}
                     />
-                    <button class="rounded-lg bg-primary px-4 py-1.5 font-bold text-white text-xs hover:bg-primary-dark transition-colors" on:click={addCategory} disabled={busy}>
-                        Add
+                    <button class="rounded-lg bg-primary px-4 py-1.5 font-bold text-white text-xs hover:bg-primary-dark transition-colors inline-flex items-center gap-2" onclick={addCategory} disabled={busy}>
+                        {#if busy}
+                            <div class="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                        {:else}
+                            Add
+                        {/if}
                     </button>
+                </div>
+                
+                <div class="flex-1 overflow-y-auto pr-1 custom-scrollbar max-h-[300px]">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 px-1">Manage Categories</p>
+                    <div class="space-y-1.5">
+                        {#each categories as cat}
+                            <div class="group flex items-center justify-between p-3 rounded-xl bg-slate-50 hover:bg-primary/5 transition-all border border-transparent hover:border-primary/10">
+                                <span class="font-semibold text-slate-700 text-sm">{cat.name}</span>
+                                <div class="flex items-center gap-2">
+                                    <button class="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors active:scale-90" title="Edit" onclick={() => openCategoryEdit(cat)}>
+                                        <span class="material-symbols-outlined text-base">edit</span>
+                                    </button>
+                                    <button class="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors active:scale-90" title="Delete" onclick={() => openCategoryDelete(cat)}>
+                                        <span class="material-symbols-outlined text-base">delete</span>
+                                    </button>
+                                </div>
+                            </div>
+                        {/each}
+                    </div>
                 </div>
             </div>
 
@@ -463,11 +568,11 @@
                 </h3>
                 <div class="grid grid-cols-1 gap-3 md:grid-cols-12">
                     <div class="md:col-span-4">
-                        <label for="product-name" class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Name</label>
+                        <label for="product-name" class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Name <span class="text-red-500">*</span></label>
                         <input id="product-name" class="w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-primary" placeholder="Product name" bind:value={productName} />
                     </div>
                     <div class="md:col-span-3">
-                        <label for="product-category" class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Category</label>
+                        <label for="product-category" class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Category <span class="text-red-500">*</span></label>
                         <select id="product-category" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 outline-none focus:border-primary" bind:value={selectedCategoryId}>
                             {#each categories as category}
                                 <option value={category.id}>{category.name}</option>
@@ -488,25 +593,25 @@
                     </div>
 
                     <div class="md:col-span-2">
-                        <label for="product-buying-price" class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Buying Price</label>
+                        <label for="product-buying-price" class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Buying Price <span class="text-red-500">*</span></label>
                         <input id="product-buying-price" class="w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-primary" placeholder="0.00" type="number" bind:value={productBuyingPrice} />
                     </div>
                     <div class="md:col-span-2">
-                        <label for="product-selling-price" class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Selling Price</label>
+                        <label for="product-selling-price" class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Selling Price <span class="text-red-500">*</span></label>
                         <input id="product-selling-price" class="w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-primary" placeholder="0.00" type="number" bind:value={productSellingPrice} />
                     </div>
                     <div class="md:col-span-2">
-                        <label for="product-stock" class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Stock</label>
+                        <label for="product-stock" class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Stock <span class="text-red-500">*</span></label>
                         <input id="product-stock" class="w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-primary" placeholder="0" type="number" bind:value={productStock} />
                     </div>
                     <div class="md:col-span-1">
-                        <label for="product-flavor" class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Flavor</label>
+                        <label for="product-flavor" class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Flavor <span class="text-red-500">*</span></label>
                         <input id="product-flavor" class="w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-primary" placeholder="e.g. Vanilla" bind:value={productFlavor} />
                     </div>
                     <div class="md:col-span-5">
                         <p class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Image</p>
                         <div class="flex items-center gap-2">
-                            <input type="file" accept="image/*" class="hidden" id="fileInput" on:change={handleFileUpload} />
+                            <input type="file" accept="image/*" class="hidden" id="fileInput" onchange={handleFileUpload} />
                             <label for="fileInput" class="cursor-pointer rounded-md border border-primary/20 bg-primary/5 px-2.5 py-2 text-[10px] font-bold text-primary hover:bg-primary/10 flex items-center gap-2">
                                 {#if uploading}
                                   <div class="h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
@@ -521,8 +626,13 @@
 
                     <div class="md:col-span-12">
                         <div class="flex justify-end gap-2">
-                          <button class="rounded-lg bg-primary px-5 py-2.5 text-xs font-bold text-white shadow-sm transition-colors hover:bg-primary-dark" on:click={saveProduct} disabled={busy}>
-                              Save Product
+                          <button class="rounded-lg bg-primary px-5 py-2.5 text-xs font-bold text-white shadow-sm transition-colors hover:bg-primary-dark inline-flex items-center gap-2" onclick={saveProduct} disabled={busy}>
+                              {#if busy}
+                                  <div class="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                                  Saving...
+                              {:else}
+                                  Save Product
+                              {/if}
                           </button>
                         </div>
                     </div>
@@ -542,13 +652,21 @@
                       class="w-52 rounded-lg border border-slate-200 px-3 py-1.5 text-xs outline-none focus:border-primary"
                       placeholder="Search product, SKU, flavor..."
                       bind:value={searchDraft}
-                      on:keydown={(e) => e.key === 'Enter' && runSearch()}
+                      onkeydown={(e) => e.key === 'Enter' && runSearch()}
                     />
-                    <button class="rounded-lg bg-primary px-3 py-1.5 text-xs font-bold text-white hover:bg-primary-dark transition-colors" on:click={runSearch}>
-                        Search
+                    <button class="rounded-lg bg-primary px-3 py-1.5 text-xs font-bold text-white hover:bg-primary-dark transition-colors inline-flex items-center gap-2" onclick={runSearch} disabled={busy}>
+                        {#if busy}
+                            <div class="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                        {:else}
+                            Search
+                        {/if}
                     </button>
-                    <button class="rounded-lg border border-primary/20 px-3 py-1.5 text-xs font-bold text-primary hover:bg-primary/5 transition-colors" on:click={refreshInventory}>
-                        Refresh
+                    <button class="rounded-lg border border-primary/20 px-3 py-1.5 text-xs font-bold text-primary hover:bg-primary/5 transition-colors inline-flex items-center gap-2" onclick={refreshInventory} disabled={busy}>
+                        {#if busy}
+                            <div class="h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+                        {:else}
+                            Refresh
+                        {/if}
                     </button>
                     <span class={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase ${dbOffline ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-700'}`}>
                         {dbOffline ? 'Sample Mode' : 'Live Mode'}
@@ -556,19 +674,14 @@
                 </div>
             </div>
 
-            {#if dbOffline || infoMessage}
+            {#if dbOffline}
                 <div class="p-4 pb-0">
-                    {#if dbOffline}
-                        <div class="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900 border border-amber-200 mb-2">{dbMessage}</div>
-                    {/if}
-                    {#if infoMessage}
-                        <div class="rounded-lg bg-sky-50 px-3 py-2 text-xs text-sky-900 border border-sky-200 mb-2">{infoMessage}</div>
-                    {/if}
+                    <div class="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900 border border-amber-200 mb-2">{dbMessage}</div>
                 </div>
             {/if}
 
             <div class="overflow-x-auto">
-                <table class="w-full text-left">
+                <table class="w-full text-left compact-table">
                     <thead class="bg-slate-50 text-slate-500 font-bold text-[10px] uppercase tracking-wider">
                         <tr>
                             <th class="px-4 py-3">Product Info</th>
@@ -592,7 +705,7 @@
                                     {/if}
                                 </td>
                                 <td class="px-4 py-3">
-                                    <span class="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">{row.category}</span>
+                                    <span class="rounded-md bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-600">{row.category}</span>
                                 </td>
                                 <td class="px-4 py-3 text-center text-slate-500 italic text-[11px]">{row.flavor || '-'}</td>
                                 <td class="px-4 py-3 text-right font-bold text-slate-900">{formatCurrency(row.buyingPrice)}</td>
@@ -609,10 +722,10 @@
                                 </td>
                                 <td class="px-4 py-3 text-center">
                                   <div class="inline-flex items-center gap-1">
-                                    <button class="rounded-md bg-blue-50 px-2 py-1 text-[10px] font-bold text-blue-700 hover:bg-blue-100" on:click={() => startEdit(row)} disabled={busy}>
+                                    <button class="rounded-md bg-blue-50 px-2 py-1 text-[10px] font-bold text-blue-700 hover:bg-blue-100" onclick={() => startEdit(row)} disabled={busy}>
                                       Edit
                                     </button>
-                                    <button class="rounded-md bg-red-50 px-2 py-1 text-[10px] font-bold text-red-700 hover:bg-red-100" on:click={() => removeProduct(row.id, row.name)} disabled={busy}>
+                                    <button class="rounded-md bg-red-50 px-2 py-1 text-[10px] font-bold text-red-700 hover:bg-red-100" onclick={() => openProductDelete(row)} disabled={busy}>
                                       Delete
                                     </button>
                                   </div>
@@ -632,76 +745,168 @@
 </main>
 
 {#if editModalOpen}
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-    <div class="w-full max-w-3xl rounded-2xl bg-white p-5 shadow-2xl">
-      <h3 class="text-lg font-bold text-slate-900 mb-4">Edit Product</h3>
-      <div class="grid grid-cols-1 gap-3 md:grid-cols-12">
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm transition-all duration-300">
+    <div class="w-full max-w-3xl rounded-3xl bg-white p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-300">
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <h3 class="text-xl font-bold text-slate-900">Edit Product</h3>
+          <p class="text-[11px] text-slate-500 font-medium">Update item details and stock levels</p>
+        </div>
+        <button class="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-all" onclick={() => (editModalOpen = false)}>
+          <span class="material-symbols-outlined text-lg">close</span>
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 gap-4 md:grid-cols-12">
         <div class="md:col-span-4">
-          <label for="edit-product-name" class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Name</label>
-          <input id="edit-product-name" class="w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-primary" bind:value={editProductName} />
+          <label for="edit-product-name" class="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Name <span class="text-red-500">*</span></label>
+          <input id="edit-product-name" class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all" bind:value={editProductName} />
         </div>
         <div class="md:col-span-3">
-          <label for="edit-product-category" class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Category</label>
-          <select id="edit-product-category" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 outline-none focus:border-primary" bind:value={editCategoryId}>
+          <label for="edit-product-category" class="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Category <span class="text-red-500">*</span></label>
+          <select id="edit-product-category" class="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all" bind:value={editCategoryId}>
             {#each categories as category}
               <option value={category.id}>{category.name}</option>
             {/each}
           </select>
         </div>
         <div class="md:col-span-2">
-          <label for="edit-product-unit" class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Unit</label>
-          <select id="edit-product-unit" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 outline-none focus:border-primary" bind:value={editUnitType}>
+          <label for="edit-product-unit" class="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Unit</label>
+          <select id="edit-product-unit" class="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all" bind:value={editUnitType}>
             {#each unitOptions as unit}
               <option value={unit}>{unit}</option>
             {/each}
           </select>
         </div>
         <div class="md:col-span-3">
-          <label for="edit-product-sku" class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Barcode</label>
-          <input id="edit-product-sku" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-[11px] outline-none focus:border-primary" bind:value={editSku} />
+          <label for="edit-product-sku" class="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Barcode</label>
+          <input id="edit-product-sku" class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-[11px] outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all" bind:value={editSku} />
         </div>
 
         <div class="md:col-span-2">
-          <label for="edit-buying-price" class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Buying Price</label>
-          <input id="edit-buying-price" class="w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-primary" type="number" bind:value={editBuyingPrice} />
+          <label for="edit-buying-price" class="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Buying Price <span class="text-red-500">*</span></label>
+          <input id="edit-buying-price" class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all" type="number" bind:value={editBuyingPrice} />
         </div>
         <div class="md:col-span-2">
-          <label for="edit-selling-price" class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Selling Price</label>
-          <input id="edit-selling-price" class="w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-primary" type="number" bind:value={editSellingPrice} />
+          <label for="edit-selling-price" class="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Selling Price <span class="text-red-500">*</span></label>
+          <input id="edit-selling-price" class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all" type="number" bind:value={editSellingPrice} />
         </div>
         <div class="md:col-span-2">
-          <label for="edit-stock" class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Stock</label>
-          <input id="edit-stock" class="w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-primary" type="number" bind:value={editStock} />
+          <label for="edit-stock" class="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Stock</label>
+          <input id="edit-stock" class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all" type="number" bind:value={editStock} />
         </div>
         <div class="md:col-span-2">
-          <label for="edit-flavor" class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Flavor</label>
-          <input id="edit-flavor" class="w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-primary" bind:value={editFlavor} />
+          <label for="edit-flavor" class="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Flavor</label>
+          <input id="edit-flavor" class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all" bind:value={editFlavor} />
         </div>
         <div class="md:col-span-4">
-          <p class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Image</p>
+          <p class="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Image</p>
           <div class="flex items-center gap-2">
-            <input type="file" accept="image/*" class="hidden" id="editFileInput" on:change={handleEditFileUpload} />
-            <label for="editFileInput" class="cursor-pointer rounded-md border border-primary/20 bg-primary/5 px-2.5 py-2 text-[10px] font-bold text-primary hover:bg-primary/10 flex items-center gap-2">
+            <input type="file" accept="image/*" class="hidden" id="editFileInput" onchange={handleEditFileUpload} />
+            <label for="editFileInput" class="cursor-pointer rounded-xl border border-primary/20 bg-primary/5 px-4 py-2.5 text-[10px] font-bold text-primary hover:bg-primary/10 flex items-center gap-2 transition-colors">
               {#if uploading}
                 <div class="h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
-                Uploading...
+                Updating...
               {:else}
-                Upload Image
+                <span class="material-symbols-outlined text-sm">upload</span>
+                Upload
               {/if}
             </label>
-            <input class="h-[34px] flex-1 rounded-md border border-slate-200 px-2 text-[11px] text-slate-600" readonly value={editImage ? 'Image linked' : 'No image selected'} />
+            <input class="h-[42px] flex-1 rounded-xl border border-slate-100 bg-slate-50 px-3 text-[11px] text-slate-400" readonly value={editImage ? 'Image linked ✓' : 'No image selected'} />
           </div>
         </div>
       </div>
 
-      <div class="mt-4 flex justify-end gap-2">
-        <button class="rounded-lg border border-slate-300 px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50" on:click={() => (editModalOpen = false)} disabled={busy}>
+      <div class="mt-8 flex justify-end gap-3">
+        <button class="rounded-xl border border-slate-200 px-6 py-3 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all" onclick={() => (editModalOpen = false)} disabled={busy}>
           Cancel
         </button>
-        <button class="rounded-lg bg-primary px-5 py-2.5 text-xs font-bold text-white shadow-sm transition-colors hover:bg-primary-dark" on:click={saveEditedProduct} disabled={busy}>
-          Update Product
+        <button class="rounded-xl bg-primary px-8 py-3 text-xs font-bold text-white shadow-lg shadow-primary/20 transition-all hover:bg-primary-dark hover:-translate-y-0.5 inline-flex items-center gap-2" onclick={saveEditedProduct} disabled={busy}>
+          {#if busy}
+            <div class="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+            Saving...
+          {:else}
+            Save Changes
+          {/if}
         </button>
       </div>
     </div>
   </div>
 {/if}
+
+{#if categoryEditModalOpen}
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm" in:fade={{ duration: 200 }}>
+    <div class="w-full max-w-sm overflow-hidden rounded-3xl bg-white shadow-2xl" in:fly={{ y: 20, duration: 400 }}>
+      <div class="bg-slate-50 border-b border-primary/5 p-5">
+        <h3 class="text-lg font-bold text-slate-900">Edit Category</h3>
+        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Update naming</p>
+      </div>
+      <div class="p-6">
+        <label class="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">Category Name <span class="text-red-500">*</span></label>
+        <input class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:border-primary focus:bg-white outline-none transition-all focus:ring-4 focus:ring-primary/5" bind:value={newCategoryName} />
+      </div>
+      <div class="bg-slate-50 p-5 flex justify-end gap-3">
+        <button class="rounded-xl border border-slate-200 bg-white px-5 py-2 text-sm font-bold text-slate-600" onclick={() => (categoryEditModalOpen = false)}>Cancel</button>
+        <button class="rounded-xl bg-primary px-7 py-2 text-sm font-bold text-white shadow-lg shadow-primary/20 hover:bg-primary-dark transition-all inline-flex items-center gap-2" onclick={performCategoryUpdate} disabled={busy}>
+          {#if busy}
+            <div class="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+            Saving...
+          {:else}
+            Save
+          {/if}
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
+
+{#if categoryDeleteModalOpen}
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm" in:fade={{ duration: 200 }}>
+    <div class="w-full max-w-sm overflow-hidden rounded-3xl bg-white shadow-2xl" in:fly={{ y: 20, duration: 400 }}>
+      <div class="p-8 text-center">
+        <div class="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-red-50 text-red-500">
+          <span class="material-symbols-outlined text-4xl">delete_forever</span>
+        </div>
+        <h3 class="text-xl font-bold text-slate-900">Delete Category?</h3>
+        <p class="mt-3 text-sm text-slate-500 leading-relaxed italic">Are you sure you want to delete <span class="font-bold text-slate-800">"{categoryToDelete?.name}"</span>? It will only work if the category is empty.</p>
+      </div>
+      <div class="bg-slate-50 p-6 flex gap-3">
+        <button class="flex-1 rounded-xl border border-slate-200 bg-white py-3 text-sm font-bold text-slate-600 hover:bg-slate-100 transition-all" onclick={() => (categoryDeleteModalOpen = false)}>Cancel</button>
+        <button class="flex-1 rounded-xl bg-red-500 py-3 text-sm font-bold text-white shadow-lg shadow-red-500/20 hover:bg-red-600 transition-all inline-flex items-center justify-center gap-2" onclick={performCategoryDelete} disabled={busy}>
+          {#if busy}
+            <div class="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+            Deleting...
+          {:else}
+            Delete
+          {/if}
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
+
+{#if productDeleteModalOpen}
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm" in:fade={{ duration: 200 }}>
+    <div class="w-full max-w-sm overflow-hidden rounded-3xl bg-white shadow-2xl" in:fly={{ y: 20, duration: 400 }}>
+      <div class="p-8 text-center">
+        <div class="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-red-50 text-red-500">
+          <span class="material-symbols-outlined text-4xl">delete</span>
+        </div>
+        <h3 class="text-xl font-bold text-slate-900">Delete Product?</h3>
+        <p class="mt-3 text-sm text-slate-500 leading-relaxed italic">Are you sure you want to delete <span class="font-bold text-slate-800">"{productToDelete?.name}"</span>? This action is permanent.</p>
+      </div>
+      <div class="bg-slate-50 p-6 flex gap-3">
+        <button class="flex-1 rounded-xl border border-slate-200 bg-white py-3 text-sm font-bold text-slate-600 hover:bg-slate-100 transition-all" onclick={() => (productDeleteModalOpen = false)}>Cancel</button>
+        <button class="flex-1 rounded-xl bg-red-500 py-3 text-sm font-bold text-white shadow-lg shadow-red-500/20 hover:bg-red-600 transition-all inline-flex items-center justify-center gap-2" onclick={performProductDelete} disabled={busy}>
+          {#if busy}
+            <div class="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+            Deleting...
+          {:else}
+            Delete
+          {/if}
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
+

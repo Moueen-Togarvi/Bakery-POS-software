@@ -3,17 +3,19 @@
   import { formatCurrency } from '$lib/components/Currency';
   import { goto, invalidateAll } from '$app/navigation';
   import { page } from '$app/stores';
+  import { toastStore } from '$lib/stores/toast.svelte';
+  import { fade, fly } from 'svelte/transition';
 
-  export let data: PageData;
-  const storeName = data.storeName ?? 'OvenFresh POS';
+  let { data } = $props();
+  const storeName = $derived(data.storeName ?? 'OvenFresh POS');
 
-  let searchQuery = $page.url.searchParams.get('search') || '';
-  let period = (data.period || 'daily') as 'daily' | 'weekly' | 'monthly' | 'custom';
-  let baseDate = data.baseDate || '';
-  let dateFrom = data.dateFrom || '';
-  let dateTo = data.dateTo || '';
-  let busy = false;
-  let infoMessage = '';
+  let searchQuery = $state($page.url.searchParams.get('search') || '');
+  let period = $state((data.period || 'daily') as 'daily' | 'weekly' | 'monthly' | 'custom');
+  let baseDate = $state(data.baseDate || '');
+  let dateFrom = $state(data.dateFrom || '');
+  let dateTo = $state(data.dateTo || '');
+  let busy = $state(false);
+  let infoMessage = $state('');
 
   function handleSearch() {
     const url = new URL($page.url);
@@ -32,21 +34,31 @@
     goto(url.toString(), { keepFocus: true });
   }
 
-  async function returnOrder(orderId: number) {
-    if (!confirm('Are you sure you want to return this order? Items will be restocked.')) return;
+  let orderToReturn = $state<number | null>(null);
+  let showReturnModal = $state(false);
+
+  function openReturnConfirm(orderId: number) {
+    orderToReturn = orderId;
+    showReturnModal = true;
+  }
+
+  async function performReturnOrder() {
+    if (!orderToReturn) return;
+
     busy = true;
     try {
       const res = await fetch('/api/reports/returns', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderId })
+        body: JSON.stringify({ orderId: orderToReturn })
       });
       const body = await res.json();
       if (!res.ok) {
-        infoMessage = body.message ?? 'Return failed.';
+        toastStore.error(body.message ?? 'Return failed.');
         return;
       }
-      infoMessage = 'Order returned successfully.';
+      toastStore.success('Order returned successfully.');
+      showReturnModal = false;
       await invalidateAll();
     } finally {
       busy = false;
@@ -128,8 +140,8 @@
     }
   }
 
-  let showReceipt = false;
-  let receiptHtml = '';
+  let showReceipt = $state(false);
+  let receiptHtml = $state('');
 
   function triggerPrint() {
     const iframe = document.getElementById('receiptFrame') as HTMLIFrameElement;
@@ -146,8 +158,6 @@
 <main class="min-h-[calc(100vh-69px)] p-4 md:p-6">
   <section class="space-y-5">
     <div class="rounded-2xl bg-white p-5 shadow-sm">
-      <div class="mb-4 flex items-center justify-between">
-        <h2 class="text-2xl font-bold text-slate-900">Reports Dashboard</h2>
       <div class="mb-4 flex items-center justify-between">
         <h2 class="text-2xl font-bold text-slate-900">Reports Dashboard</h2>
       </div>
@@ -177,9 +187,9 @@
           class="w-full rounded-lg border border-primary/20 px-4 py-2"
           placeholder="Search by Order ID, Customer, or Status..."
           bind:value={searchQuery}
-          on:keydown={(e) => e.key === 'Enter' && handleSearch()}
+          onkeydown={(e) => e.key === 'Enter' && handleSearch()}
         />
-        <button class="rounded-lg bg-primary px-6 py-2 font-semibold text-white transition-colors hover:bg-primary-dark" on:click={handleSearch}>
+        <button class="rounded-lg bg-primary px-8 py-3.5 font-bold text-white transition-all shadow-lg shadow-primary/20 active:scale-95" onclick={handleSearch}>
           Search
         </button>
       </div>
@@ -328,17 +338,21 @@
                     </td>
                     <td class="px-4 py-3 text-right space-x-1">
                       <button 
-                        class="rounded-lg p-1.5 text-slate-400 hover:bg-primary/10 hover:text-primary transition-all"
-                        on:click={() => printInvoice(order.id)}
+                        class="rounded-lg p-1.5 text-slate-400 hover:bg-primary/10 hover:text-primary transition-all inline-flex items-center justify-center"
+                        onclick={() => printInvoice(order.id)}
                         disabled={busy}
                         title="Print"
                       >
-                        <span class="material-symbols-outlined text-lg">print</span>
+                        {#if busy}
+                          <div class="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+                        {:else}
+                          <span class="material-symbols-outlined text-lg">print</span>
+                        {/if}
                       </button>
                       {#if order.status !== 'returned'}
                         <button 
                           class="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 transition-all"
-                          on:click={() => returnOrder(order.id)}
+                          onclick={() => openReturnConfirm(order.id)}
                           disabled={busy}
                           title="Returns"
                         >
@@ -358,34 +372,70 @@
 </main>
 
 {#if showReceipt}
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-    <div class="w-full max-w-sm overflow-hidden rounded-2xl bg-white shadow-2xl">
-      <div class="bg-slate-50 border-b border-primary/10 p-4 flex items-center justify-between">
-        <h3 class="text-lg font-bold text-slate-900">Print Receipt</h3>
-        <button class="text-slate-400 hover:text-red-500 transition-colors" on:click={() => (showReceipt = false)}>
-          <span class="material-symbols-outlined">close</span>
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm" in:fade={{ duration: 200 }}>
+    <div class="w-full max-w-sm overflow-hidden rounded-3xl bg-white shadow-[0_20px_50px_rgba(0,0,0,0.15)]" in:fly={{ y: 20, duration: 400, delay: 100 }}>
+      <div class="bg-slate-50 border-b border-primary/5 p-5 flex items-center justify-between">
+        <div>
+          <h3 class="text-lg font-bold text-slate-900">Receipt Preview</h3>
+          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Digital Copy</p>
+        </div>
+        <button class="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors" onclick={() => (showReceipt = false)}>
+          <span class="material-symbols-outlined text-lg">close</span>
         </button>
       </div>
       
-      <div class="p-4 flex justify-center bg-slate-100">
-        <iframe 
-          id="receiptFrame" 
-          srcdoc={receiptHtml} 
-          title="Receipt Preview"
-          class="bg-white border shadow-sm"
-          style="width: 300px; height: 400px;"
-        ></iframe>
+      <div class="p-6 flex justify-center bg-slate-100/50">
+        <div class="rounded-xl border border-slate-200 bg-white p-1 shadow-sm transition-transform hover:scale-[1.02]">
+            <iframe 
+                id="receiptFrame" 
+                srcdoc={receiptHtml} 
+                title="Receipt Preview"
+                class="bg-white"
+                style="width: 280px; height: 380px;"
+            ></iframe>
+        </div>
       </div>
 
-      <div class="p-4 bg-white grid grid-cols-2 gap-3">
-        <button class="rounded-xl border border-primary px-3 py-3 font-bold text-primary hover:bg-primary/5 transition-colors flex items-center justify-center gap-2" on:click={triggerPrint}>
-          <span class="material-symbols-outlined text-sm">print</span>
-          Print
+      <div class="p-5 bg-white border-t border-slate-100 flex gap-3">
+        <button class="flex-1 rounded-xl border-2 border-primary bg-white px-4 py-3 text-sm font-bold text-primary transition-all hover:bg-primary/5 active:scale-95 flex items-center justify-center gap-2" onclick={triggerPrint} disabled={busy}>
+          {#if busy}
+            <div class="h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+            Preparing...
+          {:else}
+            <span class="material-symbols-outlined text-sm font-bold">print</span>
+            Print Receipt
+          {/if}
         </button>
-        <button class="rounded-xl bg-primary px-3 py-3 font-bold text-white hover:bg-primary-dark transition-colors" on:click={() => (showReceipt = false)}>
+        <button class="flex-1 rounded-xl bg-primary px-4 py-3 text-sm font-bold text-white shadow-lg shadow-primary/20 transition-all hover:bg-primary-dark active:scale-95" onclick={() => (showReceipt = false)}>
           Done
         </button>
       </div>
     </div>
   </div>
 {/if}
+
+{#if showReturnModal}
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm" in:fade={{ duration: 200 }}>
+    <div class="w-full max-w-sm overflow-hidden rounded-3xl bg-white shadow-2xl" in:fly={{ y: 20, duration: 400 }}>
+      <div class="p-8 text-center">
+        <div class="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-amber-50 text-amber-500">
+          <span class="material-symbols-outlined text-4xl">history_edu</span>
+        </div>
+        <h3 class="text-xl font-bold text-slate-900">Return Order?</h3>
+        <p class="mt-3 text-sm text-slate-500 leading-relaxed italic">Are you sure you want to return this order? All items will be restocked automatically.</p>
+      </div>
+      <div class="bg-slate-50 p-6 flex gap-3">
+        <button class="flex-1 rounded-xl border border-slate-200 bg-white py-3 text-sm font-bold text-slate-600 hover:bg-slate-100 transition-all" onclick={() => (showReturnModal = false)}>Cancel</button>
+        <button class="flex-1 rounded-xl bg-amber-500 py-3 text-sm font-bold text-white shadow-lg shadow-amber-500/20 hover:bg-amber-600 transition-all inline-flex items-center justify-center gap-2" onclick={performReturnOrder} disabled={busy}>
+          {#if busy}
+            <div class="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+            Processing...
+          {:else}
+            Confirm Return
+          {/if}
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
+

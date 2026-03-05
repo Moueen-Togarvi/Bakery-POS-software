@@ -1,14 +1,15 @@
 import type { PageServerLoad } from './$types';
-import { getCartSummary, getCategories, getProducts, getRecentOrders, getSalesReport } from '$lib/server/pos';
+import { getCartSummary, getCategories, getProducts, getRecentOrders, getSalesReport, getSetting } from '$lib/server/pos';
 
 export const load: PageServerLoad = async () => {
   try {
-    const [categories, products, cart, recentOrders, todayReport] = await Promise.all([
+    const [categories, products, cart, recentOrders, todayReport, taxRateSetting] = await Promise.all([
       getCategories(),
       getProducts(),
       getCartSummary(),
       getRecentOrders(5),
-      getSalesReport({ period: 'daily' })
+      getSalesReport({ period: 'daily' }),
+      getSetting('tax_rate')
     ]);
 
     return {
@@ -20,6 +21,7 @@ export const load: PageServerLoad = async () => {
       todayNetSales: todayReport.netSales,
       todayOrders: todayReport.totalOrders,
       todayProfit: todayReport.grossProfit,
+      taxRate: Number(taxRateSetting || 0.20),
       dbOffline: false,
       dbMessage: ''
     };
@@ -46,6 +48,7 @@ export const load: PageServerLoad = async () => {
       todaySales: 0,
       todayOrders: 0,
       todayProfit: 0,
+      taxRate: 0.20,
       dbOffline: true,
       dbMessage: 'System temporarily unavailable. Please refresh the page.'
     };

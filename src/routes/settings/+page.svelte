@@ -3,14 +3,13 @@
   import type { ActionData, PageData } from './$types';
   import { toastStore } from '$lib/stores/toast.svelte';
 
-  export let data: PageData;
-  export let form: ActionData;
+  let { data, form } = $props();
 
-  let busy = false;
-  let uploading = false;
-  let storeName = data.storeName ?? 'OvenFresh POS';
-  let logoUrl = data.logoUrl ?? '';
-  let taxRate = data.taxRate ?? '8';
+  let busy = $state(false);
+  let uploading = $state(false);
+  let storeName = $state(data.storeName ?? 'OvenFresh POS');
+  let logoUrl = $state(data.logoUrl ?? '');
+  let taxRate = $state(data.taxRate ?? '20');
 </script>
 
 <svelte:head>
@@ -62,7 +61,7 @@
             accept="image/*"
             class="flex-1 rounded-lg border border-primary/20 bg-slate-50 px-4 py-2 file:mr-3 file:rounded-lg file:border-0 file:bg-primary/10 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-primary disabled:opacity-50"
             disabled={uploading}
-            on:change={async (e) => {
+            onchange={async (e) => {
               const file = e.currentTarget.files?.[0];
               if (!file) return;
 
