@@ -208,13 +208,9 @@ export async function updateProduct(input: {
 export async function deleteProduct(productId: number): Promise<void> {
   if (!Number.isInteger(productId) || productId <= 0) throw new Error('Valid product id is required');
 
-  const usedRows = await queryWithRetry(
-    'SELECT COUNT(*)::int AS count FROM order_items WHERE product_id = $1',
-    [productId]
-  );
-  if ((usedRows[0]?.count || 0) > 0) {
-    throw new Error('Cannot delete product with sales history');
-  }
+  // Instead of throwing an error for past sales, we unlink the product from historical order items.
+  // Historical order items already snapshot the name, price, and cost, so reports remain accurate.
+  await queryWithRetry('UPDATE order_items SET product_id = NULL WHERE product_id = $1', [productId]);
 
   await queryWithRetry('DELETE FROM cart_items WHERE product_id = $1', [productId]);
   const result = await queryWithRetry('DELETE FROM products WHERE id = $1 RETURNING id', [productId]);
