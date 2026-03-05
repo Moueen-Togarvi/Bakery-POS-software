@@ -241,7 +241,7 @@
       
       receipt = body.receipt;
       cart = body.cart;
-      showReceipt = true;
+      doPrint(receipt);
       toastStore.success('Sale completed successfully!');
       
       // Force refresh of page data (sales stats)

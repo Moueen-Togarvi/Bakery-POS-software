@@ -308,28 +308,46 @@ export async function completeOpenOrder(paymentMethod?: PaymentMethod): Promise<
   );
   const orderId = orderRows[0].id;
 
-  // Insert order items and decrement stock
+  // Batch insert order items
+  const itemPlaceholders = cart.items.map((_, i) =>
+    `($1, $${i * 8 + 2}, $${i * 8 + 3}, $${i * 8 + 4}, $${i * 8 + 5}, $${i * 8 + 6}, $${i * 8 + 7}, $${i * 8 + 8}, $${i * 8 + 9})`
+  ).join(', ');
+
+  const itemParams: any[] = [orderId];
   for (const item of cart.items) {
-    await queryWithRetry(
-      `INSERT INTO order_items (order_id, product_id, name, image_url, quantity, unit_price, line_total, flavor, cost_price)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-      [
-        orderId,
-        item.productId,
-        item.name,
-        item.imageUrl,
-        item.quantity,
-        item.unitPrice,
-        item.lineTotal,
-        (item as any).flavor,
-        (item as any).buyingPrice || 0
-      ]
-    );
-    await queryWithRetry(
-      `UPDATE products SET stock = stock - $1 WHERE id = $2`,
-      [item.quantity, item.productId]
+    itemParams.push(
+      item.productId,
+      item.name,
+      item.imageUrl,
+      item.quantity,
+      item.unitPrice,
+      item.lineTotal,
+      (item as any).flavor,
+      (item as any).buyingPrice || 0
     );
   }
+
+  await queryWithRetry(
+    `INSERT INTO order_items (order_id, product_id, name, image_url, quantity, unit_price, line_total, flavor, cost_price)
+     VALUES ${itemPlaceholders}`,
+    itemParams
+  );
+
+  // Batch update stock
+  // We use a CTE to update stock in one go for efficiency
+  const stockPlaceholders = cart.items.map((_, i) => `($${i * 2 + 1}::int, $${i * 2 + 2}::float)`).join(', ');
+  const stockParams: any[] = [];
+  for (const item of cart.items) {
+    stockParams.push(item.productId, item.quantity);
+  }
+
+  await queryWithRetry(
+    `UPDATE products AS p
+     SET stock = p.stock - v.qty
+     FROM (VALUES ${stockPlaceholders}) AS v(id, qty)
+     WHERE p.id = v.id`,
+    stockParams
+  );
 
   // Clear cart
   await queryWithRetry('DELETE FROM cart_items');
