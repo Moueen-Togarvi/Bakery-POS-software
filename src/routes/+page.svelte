@@ -460,30 +460,29 @@
       {:else}
         {#each filteredProducts as product}
           <button
-            class="group flex cursor-pointer flex-col overflow-hidden rounded-lg border border-primary/10 bg-white text-left shadow-sm transition-all hover:border-primary/30 hover:shadow-md"
+            class="group flex cursor-pointer flex-col overflow-hidden rounded-xl bg-white text-left transition-all hover:-translate-y-1 hover:shadow-xl active:scale-[0.98] border-2 border-primary/10 hover:border-primary/30"
             onclick={() => updateCart(product.id, 1)}
             disabled={cartLoading}
           >
-            <div class="relative aspect-[4/3] overflow-hidden bg-slate-50 border-b border-primary/10">
+            <div class="relative aspect-square overflow-hidden bg-slate-50 border-b border-primary/10">
               <img
-                class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
+                class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
                 src={product.imageUrl || '/assets/checkout-screen.png'}
                 alt={product.name}
                 onerror={(e) => (e.currentTarget.src = '/assets/checkout-screen.png')}
               />
             </div>
-            <div class="p-2 flex flex-col justify-between flex-1 bg-gradient-to-b from-white to-slate-50/50">
-              <h3 class="text-[11px] font-bold text-slate-800 leading-tight">
-                {product.name}
-                {#if product.flavor}
-                  <span class="text-[9px] font-medium text-slate-400 block mt-0.5">{product.flavor}</span>
-                {/if}
-              </h3>
-              <div class="mt-2 flex items-center justify-between">
-                <p class="text-[11px] font-black text-primary">{formatCurrency(product.price)}</p>
-                <div class="rounded-full bg-primary/10 p-1 text-primary group-hover:bg-primary group-hover:text-white transition-colors">
-                  <span class="material-symbols-outlined !text-xs">add</span>
-                </div>
+            <div class="p-2 space-y-2 bg-slate-50/50">
+              <div class="rounded-md bg-white border border-primary/5 p-1.5 shadow-sm">
+                <h3 class="line-clamp-1 text-[11px] font-bold text-slate-800">
+                  {product.name}
+                </h3>
+              </div>
+              <div class="px-1 flex items-center justify-between">
+                <p class="text-[11px] font-black text-primary">
+                  {formatCurrency(product.price)}
+                </p>
+                <span class="material-symbols-outlined text-primary/40 !text-sm group-hover:text-primary transition-colors">add_circle</span>
               </div>
             </div>
           </button>
