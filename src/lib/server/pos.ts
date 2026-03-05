@@ -451,7 +451,12 @@ export async function getSalesReport(options?: {
           FROM order_items oi
           JOIN orders o2 ON o2.id = oi.order_id
           ${completedWhereO2}
-        )                                                AS "totalCost"
+        )                                                AS "totalCost",
+        (
+          SELECT COUNT(*)::int
+          FROM orders o3
+          WHERE o3.status = 'returned'${baseFilters.length ? ` AND ${baseFilters.join(' AND ').replace(/\bo\./g, 'o3.')}` : ''}
+        )                                                AS "totalReturns"
       FROM orders o
       ${completedWhere}
     `,
@@ -504,6 +509,7 @@ export async function getSalesReport(options?: {
     netSales,
     totalCost,
     grossProfit,
+    totalReturns: t.totalReturns || 0,
     profitMargin: netSales > 0 ? round2((grossProfit / netSales) * 100) : 0,
     avgOrderValue: round2(Number(t.avgOrderValue)),
     topItems: topItemsRows.map((r: any) => ({

@@ -3,11 +3,10 @@ import { getCartSummary, getCategories, getProducts, getRecentOrders, getSalesRe
 
 export const load: PageServerLoad = async () => {
   try {
-    const [categories, products, cart, recentOrders, todayReport, taxRateSetting] = await Promise.all([
+    const [categories, products, cart, todayReport, taxRateSetting] = await Promise.all([
       getCategories(),
       getProducts(),
       getCartSummary(),
-      getRecentOrders(5),
       getSalesReport({ period: 'daily' }),
       getSetting('tax_rate')
     ]);
@@ -16,10 +15,10 @@ export const load: PageServerLoad = async () => {
       categories,
       products,
       cart,
-      recentOrders,
       todaySales: todayReport.totalRevenue,
       todayNetSales: todayReport.netSales,
       todayOrders: todayReport.totalOrders,
+      todayReturns: todayReport.totalReturns,
       todayProfit: todayReport.grossProfit,
       taxRate: (() => { const v = Number(taxRateSetting); return Number.isFinite(v) && v >= 1 ? v / 100 : (v || 0.20); })(),
       dbOffline: false,

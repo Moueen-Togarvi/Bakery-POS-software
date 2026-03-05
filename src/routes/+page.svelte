@@ -28,7 +28,6 @@
   let categories = $state(data.categories);
   let products = $state(data.products);
   let cart = $state(data.cart);
-  let recentOrders = $state([...(data.recentOrders ?? [])]);
   let dbOffline = $state(data.dbOffline);
   let dbMessage = $state(data.dbMessage);
   let selectedCategoryId = $state(0);
@@ -245,11 +244,8 @@
       showReceipt = true;
       toastStore.success('Sale completed successfully!');
       
-      // Force refresh of page data (recent orders, sales stats)
+      // Force refresh of page data (sales stats)
       await invalidateAll();
-      
-      // Update local reactive state from the newly loaded page data
-      recentOrders = [...(data.recentOrders ?? [])];
     } catch (err) {
       toastStore.error('Network error during checkout.');
     } finally {
@@ -277,9 +273,6 @@
         return;
       }
       uiMessage = 'Order returned successfully.';
-      recentOrders = recentOrders.map((order) =>
-        order.id === orderId ? { ...order, status: 'returned' } : order
-      );
     } finally {
       cartLoading = false;
     }
@@ -388,20 +381,20 @@
         <p class="mt-0.5 text-lg font-bold text-primary">{formatCurrency(data.todaySales || 0)}</p>
       </article>
       <article class="rounded-xl bg-emerald-50 p-2">
-        <p class="text-[10px] font-semibold text-slate-600 uppercase tracking-tight">Today's Orders</p>
-        <p class="mt-0.5 text-lg font-bold text-emerald-700">{data.todayOrders || 0}</p>
+        <p class="text-[10px] font-semibold text-slate-600 uppercase tracking-tight">Today's Returns</p>
+        <p class="mt-0.5 text-lg font-bold text-red-600">{data.todayReturns || 0}</p>
       </article>
       <article class="rounded-xl bg-amber-50 p-2">
         <p class="text-[10px] font-semibold text-slate-600 uppercase tracking-tight">Active Items</p>
         <p class="mt-0.5 text-lg font-bold text-amber-700">{products.length}</p>
       </article>
       <article class="rounded-xl bg-sky-50 p-2">
-        <p class="text-[10px] font-semibold text-slate-600 uppercase tracking-tight">Today's Net</p>
+        <p class="text-[10px] font-semibold text-slate-600 uppercase tracking-tight">Categories</p>
         <p class="mt-0.5 text-lg font-bold text-sky-700">
-          {formatCurrency(data.todayNetSales || 0)}
+          {Math.max(0, categories.length - 1)}
         </p>
         <p class="mt-1 text-[9px] text-slate-500">
-          Sales excluding Tax
+          Total active categories
         </p>
       </article>
     </div>
@@ -493,66 +486,6 @@
       {/if}
     </div>
 
-    <!-- Recent Sales Section -->
-    <div class="mt-auto border-t border-primary/10 bg-slate-50 p-3 max-h-[300px] flex flex-col">
-      <h3 class="mb-2 text-xs font-bold text-slate-800 uppercase tracking-wider">Recent Sales</h3>
-      <div class="no-scrollbar flex-1 overflow-y-auto">
-        <table class="w-full text-left text-xs">
-          <thead class="bg-primary/5 text-[10px] font-bold uppercase tracking-widest text-slate-500">
-            <tr>
-              <th class="px-2 py-2">Order No</th>
-              <th class="px-2 py-2">Customer</th>
-              <th class="px-2 py-2">Method</th>
-              <th class="px-2 py-2">Items</th>
-              <th class="px-2 py-2">Status</th>
-              <th class="px-2 py-2">Date</th>
-              <th class="px-2 py-2">Total</th>
-              <th class="px-2 py-2">Actions</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-primary/5">
-            {#each recentOrders.slice(0, 5) as order}
-              <tr class="group hover:bg-slate-50 transition-colors">
-                <td class="px-2 py-2 font-bold text-slate-900">{order.orderNo}</td>
-                <td class="px-2 py-2 text-slate-600">{order.customerName || 'Walk-in Customer'}</td>
-                <td class="px-2 py-2 text-slate-700">{order.paymentMethod}</td>
-                <td class="px-2 py-2 text-amber-700">{order.itemCount}</td>
-                <td class="px-2 py-2">
-                  <span class={`rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ${order.status === 'returned' ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'}`}>{order.status}</span>
-                </td>
-                <td class="px-2 py-2 text-slate-400">{new Date(order.issuedAt).toLocaleString()}</td>
-                <td class="px-2 py-2 font-bold text-slate-900">{formatCurrency(order.total)}</td>
-                <td class="px-2 py-2">
-                  <button
-                    class="flex items-center gap-1 rounded-lg bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-700 hover:bg-slate-200"
-                    onclick={() => printInvoice(order.id)}
-                    disabled={cartLoading}
-                  >
-                    <span class="material-symbols-outlined text-[14px]">print</span>
-                    Print
-                  </button>
-                  {#if order.status !== 'returned'}
-                    <button
-                      class="flex items-center gap-1 rounded-lg bg-red-50 px-2 py-1 text-[10px] font-bold text-red-700 hover:bg-red-100"
-                      onclick={() => returnOrder(order.id)}
-                      disabled={cartLoading}
-                    >
-                      <span class="material-symbols-outlined text-[14px]">undo</span>
-                      Return
-                    </button>
-                  {/if}
-                </td>
-              </tr>
-            {/each}
-            {#if recentOrders.length === 0}
-              <tr>
-                <td colspan="8" class="py-4 text-center text-xs italic text-slate-400">No recent sales found.</td>
-              </tr>
-            {/if}
-          </tbody>
-        </table>
-      </div>
-    </div>
   </section>
 
   <aside class="hidden w-full max-w-[400px] flex-col border-l border-primary/10 bg-white shadow-xl lg:flex h-[calc(100vh-69px)]">
