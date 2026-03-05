@@ -152,12 +152,22 @@
                     <td class="px-4 py-3 text-slate-600">{formatCurrency(user.salary)}</td>
                     <td class="px-4 py-3 text-slate-500">{new Date(user.joinedAt).toLocaleDateString()}</td>
                     <td class="px-4 py-3 text-right">
-                      <div class="inline-flex items-center gap-1">
-                        <button class="rounded-md bg-blue-50 px-2 py-1 text-[10px] font-bold text-blue-700 hover:bg-blue-100 disabled:opacity-50" onclick={() => openEdit(user)} disabled={modalBusy}>
-                          Edit
+                      <div class="inline-flex items-center gap-2">
+                        <button 
+                          class="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 transition-all disabled:opacity-50" 
+                          onclick={() => openEdit(user)} 
+                          disabled={modalBusy}
+                          title="Edit User"
+                        >
+                          <span class="material-symbols-outlined text-lg">edit</span>
                         </button>
-                        <button class="rounded-md bg-red-50 px-2 py-1 text-[10px] font-bold text-red-700 hover:bg-red-100 disabled:opacity-50" onclick={() => openDeleteConfirm(user)} disabled={modalBusy}>
-                          Delete
+                        <button 
+                          class="flex h-8 w-8 items-center justify-center rounded-lg bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 transition-all disabled:opacity-50" 
+                          onclick={() => openDeleteConfirm(user)} 
+                          disabled={modalBusy}
+                          title="Delete User"
+                        >
+                          <span class="material-symbols-outlined text-lg">delete</span>
                         </button>
                       </div>
                     </td>
@@ -179,8 +189,8 @@
               <input name="username" class="w-full rounded-lg border border-primary/20 px-3 py-2" placeholder="e.g. cashier1" required />
             </div>
             <div>
-              <label class="block text-xs font-semibold text-slate-500 mb-1" for="password">Password (Optional)</label>
-              <input name="password" type="password" class="w-full rounded-lg border border-primary/20 px-3 py-2" placeholder="••••••••" />
+              <label class="block text-xs font-semibold text-slate-500 mb-1" for="password">Password (Mandatory) <span class="text-red-500">*</span></label>
+              <input name="password" type="password" class="w-full rounded-lg border border-primary/20 px-3 py-2 focus:border-primary focus:ring-1 focus:ring-primary outline-none" placeholder="••••••••" required />
             </div>
             <div>
               <label class="block text-xs font-semibold text-slate-500 mb-1" for="role">Role</label>

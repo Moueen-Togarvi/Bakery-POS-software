@@ -760,12 +760,22 @@
                                     </span>
                                 </td>
                                 <td class="px-4 py-3 text-center">
-                                  <div class="inline-flex items-center gap-1">
-                                    <button class="rounded-md bg-blue-50 px-2 py-1 text-[10px] font-bold text-blue-700 hover:bg-blue-100" onclick={() => startEdit(row)} disabled={busy}>
-                                      Edit
+                                  <div class="inline-flex items-center justify-center gap-2">
+                                    <button 
+                                      class="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 transition-all active:scale-90" 
+                                      onclick={() => startEdit(row)} 
+                                      disabled={busy}
+                                      title="Edit Product"
+                                    >
+                                      <span class="material-symbols-outlined text-lg">edit</span>
                                     </button>
-                                    <button class="rounded-md bg-red-50 px-2 py-1 text-[10px] font-bold text-red-700 hover:bg-red-100" onclick={() => openProductDelete(row)} disabled={busy}>
-                                      Delete
+                                    <button 
+                                      class="flex h-8 w-8 items-center justify-center rounded-lg bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 transition-all active:scale-90" 
+                                      onclick={() => openProductDelete(row)} 
+                                      disabled={busy}
+                                      title="Delete Product"
+                                    >
+                                      <span class="material-symbols-outlined text-lg">delete</span>
                                     </button>
                                   </div>
                                 </td>

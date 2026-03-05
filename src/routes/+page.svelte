@@ -242,7 +242,7 @@
       receipt = body.receipt;
       cart = body.cart;
       doPrint(receipt);
-      toastStore.success('Sale completed successfully!');
+      toastStore.success('Order Completed!', 'Your fresh treats are baking 🍩');
       
       // Force refresh of page data (sales stats)
       await invalidateAll();
@@ -454,8 +454,8 @@
     <div class="no-scrollbar grid grid-cols-2 gap-2 overflow-y-auto p-3 md:grid-cols-4 xl:grid-cols-6">
       {#if filteredProducts.length === 0}
         <div class="col-span-full flex flex-col items-center justify-center py-12 px-4">
-          <img src="/no_products_found_image_1772693709100.png" alt="No products found" class="w-48 h-48 object-contain mb-4 animate-in fade-in zoom-in duration-500" />
-          <p class="text-sm font-medium text-slate-500 text-center">Sorry, no products found in this category!</p>
+          <img src="/no_products_provided.png" alt="No products found" class="w-72 h-72 object-contain mb-2 animate-in fade-in zoom-in duration-500" />
+          <p class="text-sm font-medium text-slate-500 text-center">Try changing the category or search query.</p>
         </div>
       {:else}
         {#each filteredProducts as product}
@@ -464,7 +464,7 @@
             onclick={() => updateCart(product.id, 1)}
             disabled={cartLoading}
           >
-            <div class="relative aspect-[4/3] overflow-hidden bg-slate-50">
+            <div class="relative aspect-[4/3] overflow-hidden bg-slate-50 border-b border-primary/10">
               <img
                 class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
                 src={product.imageUrl || '/assets/checkout-screen.png'}
@@ -472,14 +472,19 @@
                 onerror={(e) => (e.currentTarget.src = '/assets/checkout-screen.png')}
               />
             </div>
-            <div class="p-1.5">
-              <h3 class="text-xs font-semibold text-slate-800 leading-tight">
+            <div class="p-2 flex flex-col justify-between flex-1 bg-gradient-to-b from-white to-slate-50/50">
+              <h3 class="text-[11px] font-bold text-slate-800 leading-tight">
                 {product.name}
                 {#if product.flavor}
-                  <span class="text-[10px] font-normal text-slate-500 block">({product.flavor})</span>
+                  <span class="text-[9px] font-medium text-slate-400 block mt-0.5">{product.flavor}</span>
                 {/if}
               </h3>
-              <p class="mt-0.5 text-xs font-bold text-primary">{formatCurrency(product.price)}</p>
+              <div class="mt-2 flex items-center justify-between">
+                <p class="text-[11px] font-black text-primary">{formatCurrency(product.price)}</p>
+                <div class="rounded-full bg-primary/10 p-1 text-primary group-hover:bg-primary group-hover:text-white transition-colors">
+                  <span class="material-symbols-outlined !text-xs">add</span>
+                </div>
+              </div>
             </div>
           </button>
         {/each}
@@ -501,8 +506,11 @@
 
     <div class="no-scrollbar flex-1 space-y-4 overflow-y-auto p-4">
       {#if !cart.items.length}
-        <div class="rounded-xl border border-dashed border-primary/30 bg-primary/5 p-4 text-sm text-slate-600">
-          Cart is empty. Tap a product card to add items.
+        <div class="flex flex-col items-center justify-center py-8 px-4 text-center">
+          <div class="rounded-xl border border-dashed border-primary/30 bg-primary/5 p-4 text-sm text-slate-600 mb-6 w-full">
+            Cart is empty. Tap a product card to add items.
+          </div>
+          <img src="/empty_cart_illustration.png" alt="Empty Cart" class="w-32 h-32 object-contain animate-in fade-in slide-in-from-bottom-4 duration-700" />
         </div>
       {/if}
 
@@ -550,58 +558,60 @@
     </div>
 
     <div class="space-y-2 bg-primary/5 p-4">
-      <div>
-        <p class="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Payment Method</p>
-        <div class="grid grid-cols-3 gap-2">
-          {#each paymentMethods as method}
-            <button
-              class={`rounded-lg border px-2 py-1 text-[10px] font-semibold ${
-                cart.paymentMethod === method
-                  ? 'border-primary bg-primary text-white'
-                  : 'border-primary/30 bg-white text-slate-700'
-              }`}
-              onclick={() => setPaymentMethod(method)}
-              disabled={cartLoading}
-            >
-              {method}
-            </button>
-          {/each}
+      {#if cart.items.length > 0}
+        <div>
+          <p class="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Payment Method</p>
+          <div class="grid grid-cols-3 gap-2">
+            {#each paymentMethods as method}
+              <button
+                class={`rounded-lg border px-2 py-1 text-[10px] font-semibold ${
+                  cart.paymentMethod === method
+                    ? 'border-primary bg-primary text-white'
+                    : 'border-primary/30 bg-white text-slate-700'
+                }`}
+                onclick={() => setPaymentMethod(method)}
+                disabled={cartLoading}
+              >
+                {method}
+              </button>
+            {/each}
+          </div>
         </div>
-      </div>
 
-      <div class="flex justify-between text-sm">
-        <span class="text-slate-500">Subtotal</span>
-        <span class="font-medium text-slate-800">{formatCurrency(cart.subtotal)}</span>
-      </div>
-      <div class="flex justify-between text-sm">
-        <span class="text-slate-500">Tax ({Math.round(data.taxRate * 100)}%)</span>
-        <span class="font-medium text-slate-800">{formatCurrency(cart.tax)}</span>
-      </div>
-      <div class="grid grid-cols-[1fr_auto] items-center gap-2 text-sm">
-        <span class="text-slate-500">Discount</span>
-        <input
-          class="w-24 rounded-md border border-primary/20 bg-white px-2 py-1 text-[11px] font-semibold text-slate-800 outline-none focus:border-primary"
-          type="number"
-          min="0"
-          step="0.01"
-          bind:value={discountValue}
-          disabled={cartLoading}
-          placeholder="Amount"
-        />
-      </div>
-      <div class="flex justify-between text-sm">
-        <span class="text-slate-500">Discount Amount</span>
-        <span class="font-medium text-rose-700">- {formatCurrency(discountAmount)}</span>
-      </div>
-      <div class="flex items-end justify-between border-t border-primary/10 pt-2">
-        <span class="text-sm font-bold text-slate-900">Total</span>
-        <span class="text-lg font-black text-primary">{formatCurrency(payableTotal)}</span>
-      </div>
+        <div class="flex justify-between text-sm">
+          <span class="text-slate-500">Subtotal</span>
+          <span class="font-medium text-slate-800">{formatCurrency(cart.subtotal)}</span>
+        </div>
+        <div class="flex justify-between text-sm">
+          <span class="text-slate-500">Tax ({Math.round(data.taxRate * 100)}%)</span>
+          <span class="font-medium text-slate-800">{formatCurrency(cart.tax)}</span>
+        </div>
+        <div class="grid grid-cols-[1fr_auto] items-center gap-2 text-sm">
+          <span class="text-slate-500">Discount</span>
+          <input
+            class="w-24 rounded-md border border-primary/20 bg-white px-2 py-1 text-[11px] font-semibold text-slate-800 outline-none focus:border-primary"
+            type="number"
+            min="0"
+            step="0.01"
+            bind:value={discountValue}
+            disabled={cartLoading}
+            placeholder="Amount"
+          />
+        </div>
+        <div class="flex justify-between text-sm">
+          <span class="text-slate-500">Discount Amount</span>
+          <span class="font-medium text-rose-700">- {formatCurrency(discountAmount)}</span>
+        </div>
+        <div class="flex items-end justify-between border-t border-primary/10 pt-2 mb-2">
+          <span class="text-sm font-bold text-slate-900">Total</span>
+          <span class="text-lg font-black text-primary">{formatCurrency(payableTotal)}</span>
+        </div>
+      {/if}
 
       <button
-        class="mt-2 w-full rounded-lg bg-primary py-3.5 text-sm font-bold text-white shadow-lg shadow-primary/30 inline-flex items-center justify-center gap-2 active:scale-95 transition-all"
+        class="w-full rounded-lg bg-primary py-3.5 text-sm font-bold text-white shadow-lg shadow-primary/30 inline-flex items-center justify-center gap-2 active:scale-95 transition-all disabled:cursor-not-allowed"
         onclick={completeSale}
-        disabled={cartLoading}
+        disabled={cartLoading || cart.items.length === 0}
       >
         {#if cartLoading}
           <div class="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
