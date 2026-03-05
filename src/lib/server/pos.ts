@@ -472,6 +472,7 @@ export async function getSalesReport(options?: {
   const totalRevenue = round2(Number(t.totalRevenue));
   const netSales = round2(Number(t.netSales));
   const totalCost = round2(Number(t.totalCost));
+  // Profit must be based on subtotal (selling price without tax) minus buying cost
   const grossProfit = round2(netSales - totalCost);
 
   return {

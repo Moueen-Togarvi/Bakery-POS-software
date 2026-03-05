@@ -72,34 +72,43 @@
         .join('');
 
       const html = `<!doctype html>
-  <html>
-    <head>
-      <title>${receipt.receiptNo}</title>
-      <style>
-        body { font-family: monospace; font-size: 12px; margin: 0; padding: 10px; width: 280px; color: #000; }
-        h2 { margin: 0 0 10px; font-size: 16px; text-align: center; }
-        p { margin: 2px 0; }
-        table { width: 100%; border-collapse: collapse; margin: 10px 0; }
-        td, th { padding: 4px 0; text-align: left; }
-        td.right, th.right { text-align: right; }
-        hr { border: none; border-top: 1px dashed #000; margin: 5px 0; }
-      </style>
-    </head>
-    <body>
-      <h2>${storeName} Invoice</h2>
-      <p>Receipt: ${receipt.receiptNo}</p>
-      <p>Order: ${receipt.orderNo}</p>
-      <p>Payment: ${receipt.paymentMethod}</p>
-      <p>Date: ${new Date(receipt.issuedAt).toLocaleString()}</p>
-      <hr />
-      <table>${lineRows.replace(/style="[^"]*"/g, '').replace(/<td(?=>)/g, '<td>').replace(/<td(>)/g, '<td>').replace(/<td style="text-align:right;">/g, '<td class="right">')}</table>
-      <hr />
-      <p style="display: flex; justify-content: space-between;"><span>Subtotal:</span> <span>${formatCurrency(receipt.subtotal)}</span></p>
-      <p style="display: flex; justify-content: space-between;"><span>Tax:</span> <span>${formatCurrency(receipt.tax)}</span></p>
-      <hr />
-      <p style="display: flex; justify-content: space-between; font-weight: bold; font-size: 14px;"><span>TOTAL:</span> <span>${formatCurrency(receipt.total)}</span></p>
-    </body>
-  </html>`;
+<html>
+  <head>
+    <title>${receipt.receiptNo}</title>
+    <style>
+      @page { margin: 0; size: 58mm auto; }
+      body { font-family: 'Courier New', Courier, monospace; font-size: 12px; margin: 0; padding: 5mm; width: 48mm; color: #000; overflow-wrap: break-word; }
+      h2 { margin: 0 0 10px; font-size: 14px; text-align: center; text-transform: uppercase; }
+      p { margin: 2px 0; line-height: 1.2; }
+      table { width: 100%; border-collapse: collapse; margin: 5px 0; }
+      td, th { padding: 4px 0; text-align: left; vertical-align: top; }
+      td.right, th.right { text-align: right; }
+      .totals { width: 100%; margin-top: 5px; }
+      .totals td { padding: 2px 0; }
+      .bold { font-weight: bold; }
+      hr { border: none; border-top: 1px dashed #000; margin: 5px 0; }
+      .center { text-align: center; }
+    </style>
+  </head>
+  <body>
+    <h2>${storeName} Invoice</h2>
+    <p>Receipt: ${receipt.receiptNo}</p>
+    <p>Order: ${receipt.orderNo}</p>
+    <p>Payment: ${receipt.paymentMethod}</p>
+    <p>Date: ${new Date(receipt.issuedAt).toLocaleString()}</p>
+    <hr />
+    <table>${lineRows.replace(/style="[^"]*"/g, '').replace(/<td(?=>)/g, '<td>').replace(/<td(>)/g, '<td>').replace(/<td style="text-align:right;">/g, '<td class="right">')}</table>
+    <hr />
+    <table class="totals">
+      <tr><td>Subtotal:</td><td class="right">${formatCurrency(receipt.subtotal)}</td></tr>
+      <tr><td>Tax:</td><td class="right">${formatCurrency(receipt.tax)}</td></tr>
+    </table>
+    <hr />
+    <table class="totals">
+      <tr><td class="bold" style="font-size: 14px;">TOTAL:</td><td class="right bold" style="font-size: 14px;">${formatCurrency(receipt.total)}</td></tr>
+    </table>
+  </body>
+</html>`;
 
       receiptHtml = html;
       showReceipt = true;
@@ -201,7 +210,7 @@
           <span class="material-symbols-outlined text-emerald-500 text-lg">trending_up</span>
         </div>
         <p class="mt-3 text-2xl font-bold {data.grossProfit < 0 ? 'text-red-600' : 'text-emerald-600'}">{formatCurrency(data.grossProfit)}</p>
-        <p class="mt-1 text-xs text-slate-500">Revenue - Cost</p>
+        <p class="mt-1 text-xs text-slate-500">Selling - Buying</p>
       </article>
 
       <article class="flex min-w-0 flex-col justify-between rounded-xl bg-white p-4 shadow-sm border border-primary/5">

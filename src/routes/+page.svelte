@@ -67,30 +67,36 @@
     return matchesCategory && matchesSubcategory && matchesSearch;
   });
 
+  let barcodeTimeout: ReturnType<typeof setTimeout>;
+
+  function triggerBarcode() {
+    const code = barcodeBuffer.trim();
+    barcodeBuffer = '';
+    if (code.length > 2) {
+      const product = products.find(p => p.sku === code);
+      if (product) {
+        updateCart(product.id, 1);
+      }
+    }
+  }
+
   function handleKeydown(event: KeyboardEvent) {
     if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
       return;
     }
-    const now = Date.now();
     
-    // Most barcode scanners type characters very quickly.
-    // If more than 50ms implies a pause, wait a bit longer to prevent early cut-offs on slow connections.
-    if (now - lastBarcodeTime > 500) {
-      barcodeBuffer = '';
-    }
-    lastBarcodeTime = now;
-
     if (event.key === 'Enter') {
-      const code = barcodeBuffer.trim();
-      if (code.length > 2) {
-        const product = products.find(p => p.sku === code || p.sku === barcodeBuffer);
-        if (product) {
-          updateCart(product.id, 1);
-        }
-      }
-      barcodeBuffer = '';
-    } else if (event.key.length === 1) {
+       if (barcodeBuffer.length > 0) {
+           clearTimeout(barcodeTimeout);
+           triggerBarcode();
+       }
+       return;
+    }
+    
+    if (event.key.length === 1) {
       barcodeBuffer += event.key;
+      clearTimeout(barcodeTimeout);
+      barcodeTimeout = setTimeout(triggerBarcode, 150);
     }
   }
 
@@ -256,13 +262,18 @@
   <head>
     <title>${rcpt.receiptNo}</title>
     <style>
-      body { font-family: monospace; font-size: 12px; margin: 0; padding: 10px; width: 280px; color: #000; }
-      h2 { margin: 0 0 10px; font-size: 16px; text-align: center; }
-      p { margin: 2px 0; }
-      table { width: 100%; border-collapse: collapse; margin: 10px 0; }
-      td, th { padding: 4px 0; text-align: left; }
+      @page { margin: 0; size: 58mm auto; }
+      body { font-family: 'Courier New', Courier, monospace; font-size: 12px; margin: 0; padding: 5mm; width: 48mm; color: #000; overflow-wrap: break-word; }
+      h2 { margin: 0 0 10px; font-size: 14px; text-align: center; text-transform: uppercase; }
+      p { margin: 2px 0; line-height: 1.2; }
+      table { width: 100%; border-collapse: collapse; margin: 5px 0; }
+      td, th { padding: 4px 0; text-align: left; vertical-align: top; }
       td.right, th.right { text-align: right; }
+      .totals { width: 100%; margin-top: 5px; }
+      .totals td { padding: 2px 0; }
+      .bold { font-weight: bold; }
       hr { border: none; border-top: 1px dashed #000; margin: 5px 0; }
+      .center { text-align: center; }
     </style>
   </head>
   <body>
@@ -273,11 +284,15 @@
     <hr />
     <table>${lineRows.replace(/style="[^"]*"/g, '').replace(/<td(?=>)/g, '<td>').replace(/<td(>)/g, '<td>').replace(/<td style="text-align:right;">/g, '<td class="right">')}</table>
     <hr />
-    <p style="display: flex; justify-content: space-between;"><span>Subtotal:</span> <span>${formatCurrency(rcpt.subtotal)}</span></p>
-    <p style="display: flex; justify-content: space-between;"><span>Tax:</span> <span>${formatCurrency(rcpt.tax)}</span></p>
+    <table class="totals">
+      <tr><td>Subtotal:</td><td class="right">${formatCurrency(rcpt.subtotal)}</td></tr>
+      <tr><td>Tax:</td><td class="right">${formatCurrency(rcpt.tax)}</td></tr>
+    </table>
     <hr />
-    <p style="display: flex; justify-content: space-between; font-weight: bold; font-size: 14px;"><span>TOTAL:</span> <span>${formatCurrency(rcpt.total)}</span></p>
-    <p style="text-align: center; margin-top: 20px;">Thank you for your visit!</p>
+    <table class="totals">
+      <tr><td class="bold" style="font-size: 14px;">TOTAL:</td><td class="right bold" style="font-size: 14px;">${formatCurrency(rcpt.total)}</td></tr>
+    </table>
+    <p class="center" style="margin-top: 15px;">Thank you for your visit!</p>
   </body>
 </html>`;
 
@@ -320,7 +335,7 @@
           {formatCurrency(data.todayProfit || 0)}
         </p>
         <p class="mt-1 text-[9px] text-slate-500">
-          Revenue - Cost = Profit
+          Selling - Buying = Profit
         </p>
       </article>
     </div>

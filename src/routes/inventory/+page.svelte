@@ -305,6 +305,47 @@
   function runSearch() {
     searchTerm = searchDraft;
   }
+
+  let barcodeBuffer = '';
+  let barcodeTimeout: ReturnType<typeof setTimeout>;
+
+  function triggerBarcode() {
+    const code = barcodeBuffer.trim();
+    barcodeBuffer = '';
+    if (code.length > 2) {
+      if (editModalOpen) {
+          editSku = code;
+      } else {
+          productSku = code;
+      }
+    }
+  }
+
+  function handleKeydown(event: KeyboardEvent) {
+    if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
+      return;
+    }
+    
+    if (event.key === 'Enter') {
+       if (barcodeBuffer.length > 0) {
+           clearTimeout(barcodeTimeout);
+           triggerBarcode();
+       }
+       return;
+    }
+    
+    if (event.key.length === 1) {
+      barcodeBuffer += event.key;
+      clearTimeout(barcodeTimeout);
+      barcodeTimeout = setTimeout(triggerBarcode, 150);
+    }
+  }
+
+  import { onMount } from 'svelte';
+  onMount(() => {
+    window.addEventListener('keydown', handleKeydown);
+    return () => window.removeEventListener('keydown', handleKeydown);
+  });
 </script>
 
 <svelte:head>
