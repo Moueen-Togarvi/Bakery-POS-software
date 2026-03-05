@@ -268,13 +268,57 @@
     }
   }
 
+  async function compressImage(file: File): Promise<Blob> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          const maxDim = 800;
+
+          if (width > height) {
+            if (width > maxDim) {
+              height *= maxDim / width;
+              width = maxDim;
+            }
+          } else {
+            if (height > maxDim) {
+              width *= maxDim / height;
+              height = maxDim;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+
+          canvas.toBlob(
+            (blob) => {
+              if (blob) resolve(blob);
+              else reject(new Error('Canvas to Blob failed'));
+            },
+            'image/jpeg',
+            0.7
+          );
+        };
+        img.src = e.target?.result as string;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
   async function handleFileUpload(e: Event) {
     const file = (e.currentTarget as HTMLInputElement).files?.[0];
     if (!file) return;
     busy = true;
     try {
+      const compressedBlob = await compressImage(file);
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('file', compressedBlob, file.name);
       const res = await fetch('/api/upload', {
         method: 'POST',
         body: formData
@@ -285,6 +329,9 @@
       } else {
         alert('Upload failed');
       }
+    } catch (err) {
+      console.error('Upload error:', err);
+      alert('Upload failed: ' + (err as Error).message);
     } finally {
       busy = false;
     }
@@ -295,8 +342,9 @@
     if (!file) return;
     busy = true;
     try {
+      const compressedBlob = await compressImage(file);
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('file', compressedBlob, file.name);
       const res = await fetch('/api/upload', {
         method: 'POST',
         body: formData
@@ -307,6 +355,9 @@
       } else {
         alert('Upload failed');
       }
+    } catch (err) {
+      console.error('Upload error:', err);
+      alert('Upload failed: ' + (err as Error).message);
     } finally {
       busy = false;
     }
