@@ -76,17 +76,27 @@
       const product = products.find(p => p.sku === code);
       if (product) {
         updateCart(product.id, 1);
+        toastStore.success(`${product.name} added!`);
+        // Clear search if it's currently focused or filled
+        searchQuery = '';
+      } else {
+        console.warn('Scanned code not found:', code);
       }
     }
   }
 
   function handleKeydown(event: KeyboardEvent) {
-    if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
-      return;
-    }
+    const now = Date.now();
+    const diff = now - lastBarcodeTime;
+    lastBarcodeTime = now;
+
+    const isFast = diff < 50;
+    const isInputFocused = event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement;
     
+    // Scanners usually send 'Enter' at the end. We handle it instantly.
     if (event.key === 'Enter') {
        if (barcodeBuffer.length > 0) {
+           event.preventDefault(); 
            clearTimeout(barcodeTimeout);
            triggerBarcode();
        }
@@ -94,14 +104,30 @@
     }
     
     if (event.key.length === 1) {
-      barcodeBuffer += event.key;
-      clearTimeout(barcodeTimeout);
-      barcodeTimeout = setTimeout(triggerBarcode, 150);
+      if (isInputFocused) {
+        // If we detect fast scanning or we are already in a scan sequence, 
+        // prevent the character from appearing in the input field.
+        if (isFast || barcodeBuffer.length > 0) {
+          event.preventDefault();
+          barcodeBuffer += event.key;
+          clearTimeout(barcodeTimeout);
+          barcodeTimeout = setTimeout(triggerBarcode, 100);
+          return;
+        }
+      } else {
+        // Global collection
+        barcodeBuffer += event.key;
+        clearTimeout(barcodeTimeout);
+        barcodeTimeout = setTimeout(triggerBarcode, 100);
+      }
     }
   }
 
   async function handleSearchEnter(event: KeyboardEvent) {
     if (event.key !== 'Enter') return;
+    // Manual search enter logic
+    if (barcodeBuffer.length > 0) return; // Let handleKeydown handle it
+    
     const code = searchQuery.trim();
     if (!code) return;
 
@@ -109,6 +135,7 @@
     if (product) {
       event.preventDefault();
       await updateCart(product.id, 1);
+      toastStore.success(`${product.name} added!`);
       searchQuery = '';
     }
   }
@@ -118,8 +145,11 @@
     return fractionalUnits.has(unit) ? 0.1 : 1;
   }
 
+  import { page } from '$app/stores';
+  import { toastStore } from '$lib/stores/toast.svelte';
   import { onMount } from 'svelte';
   onMount(() => {
+    toastStore.info('Scanner Active: Ready for sales barcode', 2000);
     window.addEventListener('keydown', handleKeydown);
     return () => window.removeEventListener('keydown', handleKeydown);
   });
@@ -354,11 +384,6 @@
       </article>
     </div>
 
-    {#if dbOffline || uiMessage}
-      <div class="mx-3 mt-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-        {dbOffline ? dbMessage : uiMessage}
-      </div>
-    {/if}
 
     <div class="flex items-center gap-3 border-b border-primary/10 p-3">
       <div class="relative flex-1">

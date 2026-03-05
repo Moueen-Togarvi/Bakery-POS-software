@@ -1,11 +1,13 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
   import type { ActionData, PageData } from './$types';
+  import { toastStore } from '$lib/stores/toast.svelte';
 
   export let data: PageData;
   export let form: ActionData;
 
   let busy = false;
+  let uploading = false;
   let storeName = data.storeName ?? 'OvenFresh POS';
   let logoUrl = data.logoUrl ?? '';
   let taxRate = data.taxRate ?? '8';
@@ -58,20 +60,30 @@
           <input
             type="file"
             accept="image/*"
-            class="flex-1 rounded-lg border border-primary/20 bg-slate-50 px-4 py-2 file:mr-3 file:rounded-lg file:border-0 file:bg-primary/10 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-primary"
+            class="flex-1 rounded-lg border border-primary/20 bg-slate-50 px-4 py-2 file:mr-3 file:rounded-lg file:border-0 file:bg-primary/10 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-primary disabled:opacity-50"
+            disabled={uploading}
             on:change={async (e) => {
               const file = e.currentTarget.files?.[0];
               if (!file) return;
 
-              const formData = new FormData();
-              formData.append('file', file);
-              const res = await fetch('/api/upload', { method: 'POST', body: formData });
-              if (!res.ok) {
-                alert('Logo upload failed');
-                return;
+              uploading = true;
+              try {
+                const formData = new FormData();
+                formData.append('file', file);
+                const res = await fetch('/api/upload', { method: 'POST', body: formData });
+                if (!res.ok) {
+                  toastStore.error('Logo upload failed');
+                  return;
+                }
+                const upload = await res.json();
+                logoUrl = upload.url || '';
+                toastStore.success('Logo uploaded successfully!');
+              } catch (err) {
+                console.error('Upload error:', err);
+                toastStore.error('Logo upload failed');
+              } finally {
+                uploading = false;
               }
-              const upload = await res.json();
-              logoUrl = upload.url || '';
             }}
           />
           <input type="hidden" name="logoUrl" value={logoUrl} />

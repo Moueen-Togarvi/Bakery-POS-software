@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { PageData } from './$types';
   import { formatCurrency } from '$lib/components/Currency';
+  import { toastStore } from '$lib/stores/toast.svelte';
 
   type Category = { id: number; name: string };
   type InventoryRow = {
@@ -28,6 +29,7 @@
   let dbMessage = data.dbMessage;
   let infoMessage = '';
   let busy = false;
+  let uploading = false;
 
   let categoryName = '';
   let productName = '';
@@ -314,7 +316,7 @@
   async function handleFileUpload(e: Event) {
     const file = (e.currentTarget as HTMLInputElement).files?.[0];
     if (!file) return;
-    busy = true;
+    uploading = true;
     try {
       const compressedBlob = await compressImage(file);
       const formData = new FormData();
@@ -326,21 +328,22 @@
       if (res.ok) {
         const data = await res.json();
         productImage = data.url;
+        toastStore.success('Image uploaded successfully!');
       } else {
-        alert('Upload failed');
+        toastStore.error('Upload failed. Please try again.');
       }
     } catch (err) {
       console.error('Upload error:', err);
-      alert('Upload failed: ' + (err as Error).message);
+      toastStore.error('Upload failed: ' + (err as Error).message);
     } finally {
-      busy = false;
+      uploading = false;
     }
   }
 
   async function handleEditFileUpload(e: Event) {
     const file = (e.currentTarget as HTMLInputElement).files?.[0];
     if (!file) return;
-    busy = true;
+    uploading = true;
     try {
       const compressedBlob = await compressImage(file);
       const formData = new FormData();
@@ -352,14 +355,15 @@
       if (res.ok) {
         const data = await res.json();
         editImage = data.url;
+        toastStore.success('Image updated successfully!');
       } else {
-        alert('Upload failed');
+        toastStore.error('Update failed. Please try again.');
       }
     } catch (err) {
       console.error('Upload error:', err);
-      alert('Upload failed: ' + (err as Error).message);
+      toastStore.error('Update failed: ' + (err as Error).message);
     } finally {
-      busy = false;
+      uploading = false;
     }
   }
 
@@ -368,6 +372,7 @@
   }
 
   let barcodeBuffer = '';
+  let lastBarcodeTime = 0;
   let barcodeTimeout: ReturnType<typeof setTimeout>;
 
   function triggerBarcode() {
@@ -376,19 +381,28 @@
     if (code.length > 2) {
       if (editModalOpen) {
           editSku = code;
+          toastStore.success('Barcode filled in Edit Modal');
       } else {
           productSku = code;
+          toastStore.success('Barcode filled in Quick Add');
       }
     }
   }
 
   function handleKeydown(event: KeyboardEvent) {
-    if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
-      return;
-    }
+    const now = Date.now();
+    const diff = now - lastBarcodeTime;
+    lastBarcodeTime = now;
+
+    // Physical scanners emit characters very quickly (usually < 20-50ms)
+    const isFast = diff < 50;
+    
+    // Check if focuses is on an input field
+    const isInputFocused = event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement;
     
     if (event.key === 'Enter') {
        if (barcodeBuffer.length > 0) {
+           event.preventDefault(); // Intercept scanner's "Enter"
            clearTimeout(barcodeTimeout);
            triggerBarcode();
        }
@@ -396,14 +410,24 @@
     }
     
     if (event.key.length === 1) {
-      barcodeBuffer += event.key;
-      clearTimeout(barcodeTimeout);
-      barcodeTimeout = setTimeout(triggerBarcode, 150);
+      // If we detect fast scanning speed, we intercept even if an input is focused
+      if (isInputFocused && (isFast || barcodeBuffer.length > 0)) {
+        event.preventDefault();
+        barcodeBuffer += event.key;
+        clearTimeout(barcodeTimeout);
+        barcodeTimeout = setTimeout(triggerBarcode, 100);
+      } else if (!isInputFocused) {
+        // If no input is focused, always collect into buffer
+        barcodeBuffer += event.key;
+        clearTimeout(barcodeTimeout);
+        barcodeTimeout = setTimeout(triggerBarcode, 100);
+      }
     }
   }
 
   import { onMount } from 'svelte';
   onMount(() => {
+    toastStore.info('Scanner Active: Waiting for barcode...', 2000);
     window.addEventListener('keydown', handleKeydown);
     return () => window.removeEventListener('keydown', handleKeydown);
   });
@@ -483,8 +507,13 @@
                         <p class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Image</p>
                         <div class="flex items-center gap-2">
                             <input type="file" accept="image/*" class="hidden" id="fileInput" on:change={handleFileUpload} />
-                            <label for="fileInput" class="cursor-pointer rounded-md border border-primary/20 bg-primary/5 px-2.5 py-2 text-[10px] font-bold text-primary hover:bg-primary/10">
-                                Upload Image
+                            <label for="fileInput" class="cursor-pointer rounded-md border border-primary/20 bg-primary/5 px-2.5 py-2 text-[10px] font-bold text-primary hover:bg-primary/10 flex items-center gap-2">
+                                {#if uploading}
+                                  <div class="h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+                                  Uploading...
+                                {:else}
+                                  Upload Image
+                                {/if}
                             </label>
                             <input class="h-[34px] flex-1 rounded-md border border-slate-200 px-2 text-[11px] text-slate-600" readonly value={productImage ? 'Image linked' : 'No image selected'} />
                         </div>
@@ -652,8 +681,13 @@
           <p class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Image</p>
           <div class="flex items-center gap-2">
             <input type="file" accept="image/*" class="hidden" id="editFileInput" on:change={handleEditFileUpload} />
-            <label for="editFileInput" class="cursor-pointer rounded-md border border-primary/20 bg-primary/5 px-2.5 py-2 text-[10px] font-bold text-primary hover:bg-primary/10">
-              Upload Image
+            <label for="editFileInput" class="cursor-pointer rounded-md border border-primary/20 bg-primary/5 px-2.5 py-2 text-[10px] font-bold text-primary hover:bg-primary/10 flex items-center gap-2">
+              {#if uploading}
+                <div class="h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+                Uploading...
+              {:else}
+                Upload Image
+              {/if}
             </label>
             <input class="h-[34px] flex-1 rounded-md border border-slate-200 px-2 text-[11px] text-slate-600" readonly value={editImage ? 'Image linked' : 'No image selected'} />
           </div>

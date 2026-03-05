@@ -148,9 +148,8 @@
     <div class="rounded-2xl bg-white p-5 shadow-sm">
       <div class="mb-4 flex items-center justify-between">
         <h2 class="text-2xl font-bold text-slate-900">Reports Dashboard</h2>
-        <span class={`rounded-full px-3 py-1 text-xs font-semibold ${data.dbOffline ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-700'}`}>
-          {data.dbOffline ? 'Offline Mode' : 'Live Mode'}
-        </span>
+      <div class="mb-4 flex items-center justify-between">
+        <h2 class="text-2xl font-bold text-slate-900">Reports Dashboard</h2>
       </div>
       {#if data.dbOffline}
         <div class="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">{data.dbMessage}</div>

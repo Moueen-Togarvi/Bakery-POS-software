@@ -29,6 +29,7 @@
   "dependencies": {
     "@neondatabase/serverless": "^1.0.2",
     "dotenv": "^17.3.1",
+    "html5-qrcode": "^2.3.8",
     "mongodb": "^7.1.0"
   },
   "overrides": {
