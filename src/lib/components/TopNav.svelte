@@ -20,12 +20,12 @@
 </script>
 
 <header class="sticky top-0 z-30 border-b border-primary/10 bg-white shadow-sm">
-  <div class="grid grid-cols-[auto_1fr_auto] items-center gap-3 px-4 py-4 md:px-6">
+  <div class="grid grid-cols-[auto_1fr_auto] items-center gap-3 px-4 py-2 md:px-6">
     <a class="flex items-center gap-2.5 text-primary" href="/">
       {#if logoUrl}
-        <img src={logoUrl} alt="Logo" class="h-16 w-16 object-contain" />
+        <img src={logoUrl} alt="Logo" class="h-10 w-10 object-contain" />
       {:else}
-        <span class="material-symbols-outlined text-6xl">bakery_dining</span>
+        <span class="material-symbols-outlined text-4xl">bakery_dining</span>
       {/if}
       <h1 class="text-lg font-bold tracking-tight text-slate-900 md:text-xl">{storeName}</h1>
     </a>
@@ -35,7 +35,7 @@
         <a
           href={link.href}
           aria-current={isActive(link.href, $page.url.pathname) ? 'page' : undefined}
-          class={`rounded-lg px-4 py-2 text-sm font-bold transition-all ${
+          class={`rounded-lg px-4 py-1.5 text-sm font-bold transition-all ${
             isActive(link.href, $page.url.pathname)
               ? 'bg-primary text-white shadow-md shadow-primary/20'
               : 'text-slate-600 hover:bg-primary/10 hover:text-primary'
