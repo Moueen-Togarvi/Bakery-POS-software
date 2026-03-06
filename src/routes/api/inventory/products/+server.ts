@@ -26,7 +26,7 @@ export const POST: RequestHandler = async ({ request }) => {
       price: Number(price),
       buyingPrice: Number(buyingPrice ?? 0),
       imageUrl: imageUrl || undefined,
-      stock: Number(stock ?? 0),
+      stock: Math.max(0, Number(stock ?? 0)),
       sku: sku || undefined,
       unitType: unitType as any,
       flavor: flavor || undefined
@@ -67,7 +67,7 @@ export const PUT: RequestHandler = async ({ request }) => {
       price: Number(price),
       buyingPrice: Number(buyingPrice ?? 0),
       imageUrl: imageUrl || undefined,
-      stock: Number(stock ?? 0),
+      stock: Math.max(0, Number(stock ?? 0)),
       sku: sku || undefined,
       unitType: unitType as any,
       flavor: flavor || undefined

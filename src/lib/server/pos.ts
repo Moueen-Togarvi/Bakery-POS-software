@@ -152,6 +152,7 @@ export async function createProduct(input: {
 }): Promise<Product> {
   if (!input.name.trim()) throw new Error('Product name is required');
   if (!Number.isFinite(input.price) || input.price < 0) throw new Error('Valid price is required');
+  if (input.stock !== undefined && input.stock < 0) throw new Error('Stock cannot be negative');
 
   const rows = await queryWithRetry(
     `INSERT INTO products (name, price, buying_price, image_url, category_id, stock, sku, unit_type, flavor)
@@ -197,6 +198,7 @@ export async function updateProduct(input: {
   if (!Number.isInteger(input.id) || input.id <= 0) throw new Error('Valid product id is required');
   if (!input.name.trim()) throw new Error('Product name is required');
   if (!Number.isFinite(input.price) || input.price < 0) throw new Error('Valid price is required');
+  if (input.stock !== undefined && input.stock < 0) throw new Error('Stock cannot be negative');
 
   const rows = await queryWithRetry(
     `UPDATE products
@@ -290,6 +292,13 @@ export async function completeOpenOrder(paymentMethod?: PaymentMethod): Promise<
   const cart = await buildCartSummary();
 
   if (!cart.items.length) throw new Error('Cannot complete empty order');
+
+  // Verify sufficient stock for all items
+  for (const item of cart.items) {
+    if (item.currentStock < item.quantity) {
+      throw new Error(`Insufficient stock for "${item.name}". Available: ${item.currentStock}, Requested: ${item.quantity}`);
+    }
+  }
 
   const pm: PaymentMethod = paymentMethod ?? 'Cash';
 

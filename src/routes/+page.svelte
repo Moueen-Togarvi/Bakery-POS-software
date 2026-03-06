@@ -1,6 +1,9 @@
 <script lang="ts">
   import type { PageData } from './$types';
   import { formatCurrency } from '$lib/components/Currency';
+  import { page } from '$app/stores';
+  import { toastStore } from '$lib/stores/toast.svelte';
+  import { onMount } from 'svelte';
 
   type PaymentMethod = 'Cash' | 'Card' | 'QR';
   type SaleReceipt = {
@@ -36,8 +39,14 @@
   let uiMessage = $state('');
   let receipt = $state<SaleReceipt | null>(null);
   let showReceipt = $state(false);
+  // ─── Barcode Scanner State Machine ───────────────────────────────────────────
+  // Physical scanners act like keyboards but emit characters very fast (< 50ms apart).
+  // Strategy: Buffer characters when they arrive fast back-to-back.
+  // A scan ends when Enter is received OR when no key arrives for 300ms.
   let barcodeBuffer = $state('');
-  let lastBarcodeTime = $state(0);
+  let lastBarcodeTime = $state(0); // 0 means "no previous key"
+  let barcodeActive = $state(false); // True once we enter a scan sequence
+  let scannerFocused = $state(false); // True when browser has focus for scanner
   let searchQuery = $state('');
   let discountValue = $state(0);
   const paymentMethods: PaymentMethod[] = ['Cash', 'Card', 'QR'];
@@ -75,60 +84,100 @@
     return matchesCategory && matchesSubcategory && matchesSearch;
   }));
 
-  let barcodeTimeout: ReturnType<typeof setTimeout>;
+  let barcodeTimeout: ReturnType<typeof setTimeout> | undefined;
+  const SCAN_SPEED_MS = 80;  // Characters faster than this = scanner, not human
+  const SCAN_DONE_MS  = 300; // If no key for this long, flush the buffer
 
-  function triggerBarcode() {
+  function flushBuffer() {
     const code = barcodeBuffer.trim();
     barcodeBuffer = '';
-    if (code.length > 2) {
-      const product = products.find(p => p.sku === code);
-      if (product) {
-        updateCart(product.id, 1);
-        toastStore.success(`${product.name} added!`);
-        // Clear search if it's currently focused or filled
-        searchQuery = '';
-      } else {
-        console.warn('Scanned code not found:', code);
+    barcodeActive = false;
+    clearTimeout(barcodeTimeout);
+
+    if (code.length < 3) return; // Too short to be a real barcode
+
+    // Always show scanned code as info toast  
+    toastStore.info(`Scanned: ${code}`, 2000);
+
+    // Try to match the SKU (case-insensitive)
+    const product = products.find(p => (p.sku || '').trim().toLowerCase() === code.toLowerCase());
+    if (product) {
+      if (product.stock <= 0) {
+        toastStore.error(`"${product.name}" is out of stock!`);
+        return;
       }
+      updateCart(product.id, 1);
+      toastStore.success(`✓ ${product.name} added to cart!`);
+      searchQuery = '';
+    } else {
+      // Put the scanned code in the search box so user can see it
+      searchQuery = code;
+      toastStore.error(`No product found for: "${code}"`);
     }
   }
 
   function handleKeydown(event: KeyboardEvent) {
     const now = Date.now();
-    const diff = now - lastBarcodeTime;
-    lastBarcodeTime = now;
+    const timeSinceLast = lastBarcodeTime === 0 ? 9999 : (now - lastBarcodeTime);
+    const isScannerSpeed = timeSinceLast < SCAN_SPEED_MS;
 
-    const isFast = diff < 50;
-    const isInputFocused = event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement;
-    
-    // Scanners usually send 'Enter' at the end. We handle it instantly.
+    // ── Enter key: always flushes the buffer if we have one ──────────────────
     if (event.key === 'Enter') {
-       if (barcodeBuffer.length > 0) {
-           event.preventDefault(); 
-           clearTimeout(barcodeTimeout);
-           triggerBarcode();
-       }
-       return;
+      if (barcodeBuffer.length > 0) {
+        event.preventDefault();
+        clearTimeout(barcodeTimeout);
+        flushBuffer();
+      }
+      lastBarcodeTime = 0; // Reset after Enter
+      return;
     }
-    
-    if (event.key.length === 1) {
-      if (isInputFocused) {
-        // If we detect fast scanning or we are already in a scan sequence, 
-        // prevent the character from appearing in the input field.
-        if (isFast || barcodeBuffer.length > 0) {
-          event.preventDefault();
-          barcodeBuffer += event.key;
-          clearTimeout(barcodeTimeout);
-          barcodeTimeout = setTimeout(triggerBarcode, 100);
-          return;
+
+    // Only handle printable characters
+    if (event.key.length !== 1) return;
+
+    // ── Start or continue a scan sequence ────────────────────────────────────
+    if (isScannerSpeed || barcodeActive) {
+      // We are in scan mode – intercept everything
+      event.preventDefault();
+
+      if (!barcodeActive) {
+        // This is the 2nd character of a scan (1st was fast).
+        // The 1st character may have already leaked into a focused input field.
+        barcodeActive = true;
+        const focused = document.activeElement as HTMLInputElement | null;
+        if (focused && (focused.tagName === 'INPUT' || focused.tagName === 'TEXTAREA')) {
+          // Remove the last character that leaked in
+          const v = focused.value;
+          if (v.length > 0) {
+            // The leaked char is the last char in the input value
+            focused.value = v.slice(0, -1);
+            focused.dispatchEvent(new Event('input', { bubbles: true }));
+            // It was the first char of the scan; prepend it to buffer
+            barcodeBuffer = v.slice(-1) + event.key;
+          } else {
+            barcodeBuffer = event.key;
+          }
+        } else {
+          barcodeBuffer = event.key;
         }
       } else {
-        // Global collection
         barcodeBuffer += event.key;
-        clearTimeout(barcodeTimeout);
-        barcodeTimeout = setTimeout(triggerBarcode, 100);
+      }
+
+      // Restart the idle-flush timer
+      clearTimeout(barcodeTimeout);
+      barcodeTimeout = setTimeout(flushBuffer, SCAN_DONE_MS);
+
+    } else {
+      // ── Normal human keystroke ──────────────────────────────────────────────
+      // Discard any partial buffer from before
+      if (barcodeBuffer.length > 0) {
+        barcodeBuffer = '';
+        barcodeActive = false;
       }
     }
+
+    lastBarcodeTime = now;
   }
 
   async function handleSearchEnter(event: KeyboardEvent) {
@@ -141,6 +190,10 @@
 
     const product = products.find((p) => (p.sku || '').toLowerCase() === code.toLowerCase());
     if (product) {
+      if (product.stock <= 0) {
+        toastStore.error(`"${product.name}" is out of stock!`);
+        return;
+      }
       event.preventDefault();
       await updateCart(product.id, 1);
       toastStore.success(`${product.name} added!`);
@@ -153,16 +206,31 @@
     return fractionalUnits.has(unit) ? 0.1 : 1;
   }
 
-  import { page } from '$app/stores';
-  import { toastStore } from '$lib/stores/toast.svelte';
-  import { onMount } from 'svelte';
+  let searchInputEl: HTMLInputElement;
+
   onMount(() => {
-    toastStore.info('Scanner Active: Ready for sales barcode', 2000);
+    // Auto-focus the search input so the browser receives scanner keystrokes
+    searchInputEl?.focus();
+    scannerFocused = true;
     window.addEventListener('keydown', handleKeydown);
+    // Re-focus when window regains focus (e.g., user switched tabs)
+    window.addEventListener('focus', () => {
+      searchInputEl?.focus();
+      scannerFocused = true;
+    });
+    window.addEventListener('blur', () => { scannerFocused = false; });
     return () => window.removeEventListener('keydown', handleKeydown);
   });
 
   async function updateCart(productId: number, delta: number) {
+    if (delta > 0) {
+      const product = products.find(p => p.id === productId);
+      if (product && product.stock <= 0) {
+        toastStore.error('Item is out of stock!');
+        return;
+      }
+    }
+    
     cartLoading = true;
     try {
       const res = await fetch('/api/cart', {
@@ -374,6 +442,12 @@
 </svelte:head>
 
 <main class="flex min-h-[calc(100vh-69px)] overflow-hidden text-sm">
+  <!-- Scanner Debug Overlay -->
+  {#if barcodeActive || barcodeBuffer.length > 0}
+    <div class="fixed top-20 left-1/2 -translate-x-1/2 z-[9999] rounded-full bg-green-600 px-6 py-2 text-sm font-bold text-white shadow-2xl border-4 border-white">
+      📷 Scanning: <span class="bg-white text-green-700 px-2 rounded ml-2 font-mono">{barcodeBuffer}</span>
+    </div>
+  {/if}
   <section class="flex flex-1 flex-col bg-white">
     <div class="grid grid-cols-2 gap-2 border-b border-primary/10 p-3 lg:grid-cols-4">
       <article class="rounded-xl bg-primary/10 p-2">
@@ -401,14 +475,26 @@
 
 
     <div class="flex items-center gap-3 border-b border-primary/10 p-3">
+      <!-- Scanner Status -->
+      <button
+        class={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-bold transition-all shrink-0 ${scannerFocused ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600 animate-pulse'}`}
+        onclick={() => { searchInputEl?.focus(); scannerFocused = true; }}
+        title="Click to activate scanner"
+      >
+        <span class="material-symbols-outlined text-sm">{scannerFocused ? 'barcode_scanner' : 'warning'}</span>
+        {scannerFocused ? 'Scanner Ready' : 'Click to Activate'}
+      </button>
       <div class="relative flex-1">
         <span class="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-lg">search</span>
         <input 
           id="product-search-input"
+          bind:this={searchInputEl}
           class="w-full rounded-full border border-primary/20 bg-slate-50 py-1.5 pl-9 pr-4 text-sm focus:border-primary focus:bg-white focus:outline-none"
-          placeholder="Scan barcode or search..."
+          placeholder="Scan barcode or search product..."
           bind:value={searchQuery}
           onkeydown={handleSearchEnter}
+          onfocus={() => (scannerFocused = true)}
+          onblur={() => (scannerFocused = false)}
         />
       </div>
     </div>
@@ -460,29 +546,41 @@
       {:else}
         {#each filteredProducts as product}
           <button
-            class="group flex cursor-pointer flex-col overflow-hidden rounded-xl bg-white text-left transition-all hover:-translate-y-1 hover:shadow-xl active:scale-[0.98] border-2 border-primary/10 hover:border-primary/30"
+            class="group flex cursor-pointer flex-col overflow-hidden rounded-xl bg-white text-left transition-all hover:-translate-y-1 hover:shadow-xl active:scale-[0.98] border-2 border-primary/10 hover:border-primary/30 disabled:opacity-60 disabled:cursor-not-allowed"
             onclick={() => updateCart(product.id, 1)}
-            disabled={cartLoading}
+            disabled={cartLoading || product.stock <= 0}
           >
             <div class="relative aspect-square overflow-hidden bg-slate-50 border-b border-primary/10">
               <img
-                class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+                class={`h-full w-full object-cover transition-transform duration-500 ${product.stock > 0 ? 'group-hover:scale-110' : 'grayscale'}`}
                 src={product.imageUrl || '/assets/checkout-screen.png'}
                 alt={product.name}
                 onerror={(e) => (e.currentTarget.src = '/assets/checkout-screen.png')}
               />
+              {#if product.stock <= 0}
+                <div class="absolute inset-0 flex items-center justify-center bg-black/40">
+                  <span class="rounded bg-red-600 px-2 py-1 text-[10px] font-bold text-white uppercase tracking-wider">Out of Stock</span>
+                </div>
+              {/if}
             </div>
             <div class="p-2 space-y-2 bg-slate-50/50">
               <div class="rounded-md bg-white border border-primary/5 p-1.5 shadow-sm">
-                <h3 class="line-clamp-1 text-[11px] font-bold text-slate-800">
-                  {product.name}
-                </h3>
+                <div class="flex items-center justify-between gap-1 mb-0.5">
+                  <h3 class="line-clamp-1 text-[11px] font-bold text-slate-800">
+                    {product.name}
+                  </h3>
+                  <span class={`shrink-0 rounded px-1.5 py-0.5 text-[9px] font-bold ${product.stock <= 5 ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                    {product.stock} {product.unitType}
+                  </span>
+                </div>
               </div>
               <div class="px-1 flex items-center justify-between">
                 <p class="text-[11px] font-black text-primary">
                   {formatCurrency(product.price)}
                 </p>
-                <span class="material-symbols-outlined text-primary/40 !text-sm group-hover:text-primary transition-colors">add_circle</span>
+                <span class={`material-symbols-outlined !text-sm transition-colors ${product.stock > 0 ? 'text-primary/40 group-hover:text-primary' : 'text-slate-300'}`}>
+                  {product.stock > 0 ? 'add_circle' : 'block'}
+                </span>
               </div>
             </div>
           </button>

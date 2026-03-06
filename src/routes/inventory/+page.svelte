@@ -231,6 +231,10 @@
           toastStore.error('Valid buying price is required.');
           return;
       }
+      if (Number(productStock) < 0) {
+          toastStore.error('Stock cannot be negative.');
+          return;
+      }
 
       busy = true;
       try {
@@ -293,6 +297,10 @@
     }
     if (!Number.isFinite(buyingPrice) || buyingPrice <= 0) {
       toastStore.error('Valid buying price is required.');
+      return;
+    }
+    if (Number(editStock) < 0) {
+      toastStore.error('Stock cannot be negative.');
       return;
     }
 
@@ -473,58 +481,82 @@
     setTimeout(() => { busy = false; }, 300);
   }
 
+  // ─── Barcode Scanner State Machine ───────────────────────────────────────────
   let barcodeBuffer = $state('');
   let lastBarcodeTime = $state(0);
-  let barcodeTimeout: ReturnType<typeof setTimeout>;
+  let barcodeActive = $state(false);
+  let barcodeTimeout: ReturnType<typeof setTimeout> | undefined;
+  const SCAN_SPEED_MS = 80;
+  const SCAN_DONE_MS  = 300;
 
-  function triggerBarcode() {
+  function flushBuffer() {
     const code = barcodeBuffer.trim();
     barcodeBuffer = '';
-    if (code.length > 2) {
-      if (editModalOpen) {
-          editSku = code;
-          toastStore.success('Barcode filled in Edit Modal');
-      } else {
-          productSku = code;
-          toastStore.success('Barcode filled in Quick Add');
-      }
+    barcodeActive = false;
+    clearTimeout(barcodeTimeout);
+
+    if (code.length < 3) return;
+
+    toastStore.info(`📷 Scanned: ${code}`, 1500);
+    if (editModalOpen) {
+      editSku = code;
+      toastStore.success('✓ Barcode filled in Edit Modal!');
+    } else {
+      productSku = code;
+      toastStore.success('✓ Barcode filled in Quick Add!');
     }
   }
 
   function handleKeydown(event: KeyboardEvent) {
     const now = Date.now();
-    const diff = now - lastBarcodeTime;
-    lastBarcodeTime = now;
+    const timeSinceLast = lastBarcodeTime === 0 ? 9999 : (now - lastBarcodeTime);
+    const isScannerSpeed = timeSinceLast < SCAN_SPEED_MS;
 
-    // Physical scanners emit characters very quickly (usually < 20-50ms)
-    const isFast = diff < 50;
-    
-    // Check if focuses is on an input field
-    const isInputFocused = event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement;
-    
     if (event.key === 'Enter') {
-       if (barcodeBuffer.length > 0) {
-           event.preventDefault(); // Intercept scanner's "Enter"
-           clearTimeout(barcodeTimeout);
-           triggerBarcode();
-       }
-       return;
-    }
-    
-    if (event.key.length === 1) {
-      // If we detect fast scanning speed, we intercept even if an input is focused
-      if (isInputFocused && (isFast || barcodeBuffer.length > 0)) {
+      if (barcodeBuffer.length > 0) {
         event.preventDefault();
-        barcodeBuffer += event.key;
         clearTimeout(barcodeTimeout);
-        barcodeTimeout = setTimeout(triggerBarcode, 100);
-      } else if (!isInputFocused) {
-        // If no input is focused, always collect into buffer
+        flushBuffer();
+      }
+      lastBarcodeTime = 0;
+      return;
+    }
+
+    if (event.key.length !== 1) return;
+
+    if (isScannerSpeed || barcodeActive) {
+      event.preventDefault();
+
+      if (!barcodeActive) {
+        barcodeActive = true;
+        const focused = document.activeElement as HTMLInputElement | null;
+        if (focused && (focused.tagName === 'INPUT' || focused.tagName === 'TEXTAREA')) {
+          const v = focused.value;
+          if (v.length > 0) {
+            focused.value = v.slice(0, -1);
+            focused.dispatchEvent(new Event('input', { bubbles: true }));
+            barcodeBuffer = v.slice(-1) + event.key;
+          } else {
+            barcodeBuffer = event.key;
+          }
+        } else {
+          barcodeBuffer = event.key;
+        }
+      } else {
         barcodeBuffer += event.key;
-        clearTimeout(barcodeTimeout);
-        barcodeTimeout = setTimeout(triggerBarcode, 100);
+      }
+
+      clearTimeout(barcodeTimeout);
+      barcodeTimeout = setTimeout(flushBuffer, SCAN_DONE_MS);
+
+    } else {
+      if (barcodeBuffer.length > 0) {
+        barcodeBuffer = '';
+        barcodeActive = false;
       }
     }
+
+    lastBarcodeTime = now;
   }
 
   import { onMount } from 'svelte';
@@ -622,7 +654,7 @@
                     </div>
                     <div class="md:col-span-2">
                         <label for="product-stock" class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Stock <span class="text-red-500">*</span></label>
-                        <input id="product-stock" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs outline-none focus:border-primary" placeholder="0" type="number" bind:value={productStock} />
+                        <input id="product-stock" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs outline-none focus:border-primary" placeholder="0" type="number" min="0" bind:value={productStock} />
                     </div>
                     <div class="md:col-span-2">
                         <label for="product-flavor" class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Flavor <span class="text-red-500">*</span></label>
