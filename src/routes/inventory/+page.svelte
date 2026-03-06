@@ -2,6 +2,7 @@
   import type { PageData } from './$types';
   import { formatCurrency } from '$lib/components/Currency';
   import { toastStore } from '$lib/stores/toast.svelte';
+  import BarcodeScanner from '$lib/components/BarcodeScanner.svelte';
 
   type Category = { id: number; name: string };
   type InventoryRow = {
@@ -51,6 +52,8 @@
   let editFlavor = $state('');
   let editUnitType = $state('pcs');
   let editCategoryId = $state(categories[0]?.id ?? 1);
+  let showCameraScanner = $state(false);
+  let scannerForEdit = $state(false);
   const unitOptions = ['pcs', 'dozen', 'slice', 'loaf', 'tray', 'box', 'pack', 'kg', 'g', 'lb', 'oz', 'liter', 'ml'];
   let searchDraft = $state('');
   let searchTerm = $state('');
@@ -485,8 +488,10 @@
   let barcodeBuffer = $state('');
   let lastBarcodeTime = $state(0);
   let barcodeActive = $state(false);
+  let scannerFocused = $state(false);
+  let hiddenInputEl: HTMLInputElement | null = null;
   let barcodeTimeout: ReturnType<typeof setTimeout> | undefined;
-  const SCAN_SPEED_MS = 80;
+  const SCAN_SPEED_MS = 250;
   const SCAN_DONE_MS  = 300;
 
   function flushBuffer() {
@@ -502,8 +507,35 @@
       editSku = code;
       toastStore.success('✓ Barcode filled in Edit Modal!');
     } else {
+      // Always fill the SKU for Quick Add
+      productSku = code;
+      // And trigger a search to see if it exists
+      searchDraft = code;
+      runSearch();
+      toastStore.success(`✓ Scanned: ${code} (Filled & Searching)`);
+    }
+  }
+
+  function handleCameraScan(code: string) {
+    if (scannerForEdit) {
+      editSku = code;
+      toastStore.success('✓ Barcode filled in Edit Modal!');
+    } else {
       productSku = code;
       toastStore.success('✓ Barcode filled in Quick Add!');
+    }
+    showCameraScanner = false;
+  }
+
+  function undoFirstCharLeak(char: string) {
+    if (!char || char.length !== 1) return;
+    const focused = document.activeElement as HTMLInputElement | null;
+    if (focused && (focused.tagName === 'INPUT' || focused.tagName === 'TEXTAREA')) {
+      const v = focused.value;
+      if (v.endsWith(char)) {
+        focused.value = v.slice(0, -char.length);
+        focused.dispatchEvent(new Event('input', { bubbles: true }));
+      }
     }
   }
 
@@ -529,31 +561,17 @@
 
       if (!barcodeActive) {
         barcodeActive = true;
-        const focused = document.activeElement as HTMLInputElement | null;
-        if (focused && (focused.tagName === 'INPUT' || focused.tagName === 'TEXTAREA')) {
-          const v = focused.value;
-          if (v.length > 0) {
-            focused.value = v.slice(0, -1);
-            focused.dispatchEvent(new Event('input', { bubbles: true }));
-            barcodeBuffer = v.slice(-1) + event.key;
-          } else {
-            barcodeBuffer = event.key;
-          }
-        } else {
-          barcodeBuffer = event.key;
-        }
+        undoFirstCharLeak(barcodeBuffer);
+        barcodeBuffer += event.key;
       } else {
         barcodeBuffer += event.key;
       }
 
       clearTimeout(barcodeTimeout);
       barcodeTimeout = setTimeout(flushBuffer, SCAN_DONE_MS);
-
     } else {
-      if (barcodeBuffer.length > 0) {
-        barcodeBuffer = '';
-        barcodeActive = false;
-      }
+      barcodeBuffer = event.key;
+      barcodeActive = false;
     }
 
     lastBarcodeTime = now;
@@ -562,7 +580,14 @@
   import { onMount } from 'svelte';
   onMount(() => {
     toastStore.info('Scanner Active: Waiting for barcode...', 2000);
+    scannerFocused = true;
     window.addEventListener('keydown', handleKeydown);
+    window.addEventListener('focus', () => {
+      scannerFocused = true;
+    });
+    window.addEventListener('blur', () => {
+      scannerFocused = false;
+    });
     return () => window.removeEventListener('keydown', handleKeydown);
   });
 </script>
@@ -641,7 +666,16 @@
                     </div>
                     <div class="md:col-span-3">
                         <label for="product-sku" class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Barcode</label>
-                        <input id="product-sku" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs outline-none focus:border-primary" placeholder="SKU/Barcode" bind:value={productSku} />
+                        <div class="flex gap-2">
+                            <input id="product-sku" class="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-xs outline-none focus:border-primary" placeholder="SKU/Barcode" bind:value={productSku} />
+                            <button 
+                                class="flex h-[38px] w-10 items-center justify-center rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-all shadow-sm"
+                                onclick={() => { showCameraScanner = true; scannerForEdit = false; }}
+                                title="Open camera scanner"
+                            >
+                                <span class="material-symbols-outlined text-lg">photo_camera</span>
+                            </button>
+                        </div>
                     </div>
 
                     <div class="md:col-span-2">
@@ -708,6 +742,35 @@
                     <p class="text-[11px] text-slate-500">Real-time stock management</p>
                 </div>
                 <div class="flex items-center gap-2">
+                    <!-- Scanner Status -->
+                    <button
+                        class={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-bold transition-all shrink-0 ${scannerFocused ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600 animate-pulse cursor-pointer'}`}
+                        onclick={() => { window.focus(); hiddenInputEl?.focus(); scannerFocused = true; }}
+                        title="Scanner status (click to re-activate focus if needed)"
+                    >
+                        <span class="material-symbols-outlined text-xs">{scannerFocused ? 'barcode_scanner' : 'warning'}</span>
+                        {scannerFocused ? 'Scanner Ready' : '⚠ Click to Activate'}
+                    </button>
+
+                    <!-- INVISIBLE SCANNER TRAP -->
+                    <input
+                      type="text"
+                      bind:this={hiddenInputEl}
+                      class="absolute -left-[9999px] opacity-0"
+                      onfocus={() => scannerFocused = true}
+                      onblur={() => {
+                        setTimeout(() => {
+                          const active = document.activeElement;
+                          if (active && active.tagName !== 'INPUT' && active.tagName !== 'TEXTAREA') {
+                            hiddenInputEl?.focus();
+                          } else if (!active || active === document.body) {
+                            hiddenInputEl?.focus();
+                          } else {
+                            scannerFocused = false;
+                          }
+                        }, 10);
+                      }}
+                    />
                     <input
                       class="w-52 rounded-lg border border-slate-200 px-3 py-1.5 text-xs outline-none focus:border-primary"
                       placeholder="Search product, SKU, flavor..."
@@ -861,7 +924,16 @@
         </div>
         <div class="md:col-span-3">
           <label for="edit-product-sku" class="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Barcode</label>
-          <input id="edit-product-sku" class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-[11px] outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all" bind:value={editSku} />
+          <div class="flex gap-2">
+            <input id="edit-product-sku" class="flex-1 rounded-xl border border-slate-200 px-3.5 py-2.5 text-[11px] outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all" bind:value={editSku} />
+            <button 
+              class="flex h-[42px] w-12 items-center justify-center rounded-xl bg-primary/10 text-primary hover:bg-primary/20 transition-all shadow-sm"
+              onclick={() => { showCameraScanner = true; scannerForEdit = true; }}
+              title="Open camera scanner"
+            >
+              <span class="material-symbols-outlined text-lg">photo_camera</span>
+            </button>
+          </div>
         </div>
 
         <div class="md:col-span-2">
@@ -990,3 +1062,23 @@
   </div>
 {/if}
 
+{#if showCameraScanner}
+  <BarcodeScanner 
+    onScan={handleCameraScan} 
+    onClose={() => showCameraScanner = false} 
+  />
+{/if}
+
+<!-- Focus Lost Warning Overlay -->
+{#if !scannerFocused}
+  <button
+    class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-3 rounded-2xl bg-red-500 px-6 py-4 text-white shadow-2xl shadow-red-500/40 animate-bounce cursor-pointer border-4 border-white"
+    onclick={() => { window.focus(); hiddenInputEl?.focus(); scannerFocused = true; }}
+  >
+    <span class="material-symbols-outlined text-3xl">barcode_scanner</span>
+    <div class="text-left">
+      <p class="font-black text-base">CLICK HERE to Activate Scanner</p>
+      <p class="text-xs opacity-80">Browser lost focus — scanner won't work until you click</p>
+    </div>
+  </button>
+{/if}

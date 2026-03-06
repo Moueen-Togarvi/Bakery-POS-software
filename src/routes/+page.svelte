@@ -4,6 +4,7 @@
   import { page } from '$app/stores';
   import { toastStore } from '$lib/stores/toast.svelte';
   import { onMount } from 'svelte';
+  import BarcodeScanner from '$lib/components/BarcodeScanner.svelte';
 
   type PaymentMethod = 'Cash' | 'Card' | 'QR';
   type SaleReceipt = {
@@ -47,7 +48,9 @@
   let lastBarcodeTime = $state(0); // 0 means "no previous key"
   let barcodeActive = $state(false); // True once we enter a scan sequence
   let scannerFocused = $state(false); // True when browser has focus for scanner
+  let hiddenInputEl: HTMLInputElement | null = null;
   let searchQuery = $state('');
+  let showCameraScanner = $state(false);
   let discountValue = $state(0);
   const paymentMethods: PaymentMethod[] = ['Cash', 'Card', 'QR'];
   const fractionalUnits = new Set(['kg', 'lb']);
@@ -85,8 +88,8 @@
   }));
 
   let barcodeTimeout: ReturnType<typeof setTimeout> | undefined;
-  const SCAN_SPEED_MS = 80;  // Characters faster than this = scanner, not human
-  const SCAN_DONE_MS  = 300; // If no key for this long, flush the buffer
+  const SCAN_SPEED_MS = 250; // Increased tolerance for slower scanners
+  const SCAN_DONE_MS  = 300; // Time to wait before flushing
 
   function flushBuffer() {
     const code = barcodeBuffer.trim();
@@ -116,65 +119,60 @@
     }
   }
 
+  function handleCameraScan(code: string) {
+    barcodeBuffer = code;
+    flushBuffer();
+    showCameraScanner = false;
+  }
+
+  function undoFirstCharLeak(char: string) {
+    if (!char || char.length !== 1) return;
+    const focused = document.activeElement as HTMLInputElement | null;
+    if (focused && (focused.tagName === 'INPUT' || focused.tagName === 'TEXTAREA')) {
+      const v = focused.value;
+      // Scanners are fast, so the char is almost certainly at the end
+      if (v.endsWith(char)) {
+        focused.value = v.slice(0, -char.length);
+        focused.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    }
+  }
+
   function handleKeydown(event: KeyboardEvent) {
     const now = Date.now();
     const timeSinceLast = lastBarcodeTime === 0 ? 9999 : (now - lastBarcodeTime);
     const isScannerSpeed = timeSinceLast < SCAN_SPEED_MS;
 
-    // ── Enter key: always flushes the buffer if we have one ──────────────────
     if (event.key === 'Enter') {
       if (barcodeBuffer.length > 0) {
         event.preventDefault();
         clearTimeout(barcodeTimeout);
         flushBuffer();
       }
-      lastBarcodeTime = 0; // Reset after Enter
+      lastBarcodeTime = 0;
       return;
     }
 
-    // Only handle printable characters
     if (event.key.length !== 1) return;
 
-    // ── Start or continue a scan sequence ────────────────────────────────────
     if (isScannerSpeed || barcodeActive) {
-      // We are in scan mode – intercept everything
       event.preventDefault();
 
       if (!barcodeActive) {
-        // This is the 2nd character of a scan (1st was fast).
-        // The 1st character may have already leaked into a focused input field.
+        // This is the 2nd char. The 1st char leaked into input.
         barcodeActive = true;
-        const focused = document.activeElement as HTMLInputElement | null;
-        if (focused && (focused.tagName === 'INPUT' || focused.tagName === 'TEXTAREA')) {
-          // Remove the last character that leaked in
-          const v = focused.value;
-          if (v.length > 0) {
-            // The leaked char is the last char in the input value
-            focused.value = v.slice(0, -1);
-            focused.dispatchEvent(new Event('input', { bubbles: true }));
-            // It was the first char of the scan; prepend it to buffer
-            barcodeBuffer = v.slice(-1) + event.key;
-          } else {
-            barcodeBuffer = event.key;
-          }
-        } else {
-          barcodeBuffer = event.key;
-        }
+        undoFirstCharLeak(barcodeBuffer); // barcodeBuffer still has that 1st char
+        barcodeBuffer += event.key;
       } else {
         barcodeBuffer += event.key;
       }
 
-      // Restart the idle-flush timer
       clearTimeout(barcodeTimeout);
       barcodeTimeout = setTimeout(flushBuffer, SCAN_DONE_MS);
-
     } else {
-      // ── Normal human keystroke ──────────────────────────────────────────────
-      // Discard any partial buffer from before
-      if (barcodeBuffer.length > 0) {
-        barcodeBuffer = '';
-        barcodeActive = false;
-      }
+      // Normal typing, but store it as a potential 1st char of a scan
+      barcodeBuffer = event.key;
+      barcodeActive = false;
     }
 
     lastBarcodeTime = now;
@@ -477,13 +475,44 @@
     <div class="flex items-center gap-3 border-b border-primary/10 p-3">
       <!-- Scanner Status -->
       <button
-        class={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-bold transition-all shrink-0 ${scannerFocused ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600 animate-pulse'}`}
-        onclick={() => { searchInputEl?.focus(); scannerFocused = true; }}
+        class={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-bold transition-all shrink-0 ${scannerFocused ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600 animate-pulse cursor-pointer'}`}
+        onclick={() => { window.focus(); hiddenInputEl?.focus(); scannerFocused = true; }}
         title="Click to activate scanner"
       >
         <span class="material-symbols-outlined text-sm">{scannerFocused ? 'barcode_scanner' : 'warning'}</span>
-        {scannerFocused ? 'Scanner Ready' : 'Click to Activate'}
+        {scannerFocused ? 'Scanner Ready' : '⚠ Click to Activate'}
       </button>
+
+      <!-- INVISIBLE SCANNER TRAP -->
+      <input
+        type="text"
+        bind:this={hiddenInputEl}
+        class="absolute -left-[9999px] opacity-0"
+        onfocus={() => scannerFocused = true}
+        onblur={() => {
+          // Only lose focus if we didn't intentionally click another input
+          setTimeout(() => {
+            const active = document.activeElement;
+            if (active && active.tagName !== 'INPUT' && active.tagName !== 'TEXTAREA') {
+              hiddenInputEl?.focus();
+            } else if (!active || active === document.body) {
+              hiddenInputEl?.focus();
+            } else {
+              scannerFocused = false;
+            }
+          }, 10);
+        }}
+      />
+
+      <button 
+        class="flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1.5 text-[11px] font-bold text-primary transition-all hover:bg-primary/20 shrink-0"
+        onclick={() => showCameraScanner = true}
+        title="Open camera scanner"
+      >
+        <span class="material-symbols-outlined text-sm">photo_camera</span>
+        Camera
+      </button>
+
       <div class="relative flex-1">
         <span class="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-lg">search</span>
         <input 
@@ -493,8 +522,15 @@
           placeholder="Scan barcode or search product..."
           bind:value={searchQuery}
           onkeydown={handleSearchEnter}
-          onfocus={() => (scannerFocused = true)}
-          onblur={() => (scannerFocused = false)}
+          onfocus={() => (scannerFocused = false)}
+          onblur={() => {
+            setTimeout(() => {
+              const active = document.activeElement;
+              if (!active || active === document.body) {
+                hiddenInputEl?.focus();
+              }
+            }, 10);
+          }}
         />
       </div>
     </div>
@@ -756,4 +792,25 @@
       </div>
     </div>
   </div>
+{/if}
+
+{#if showCameraScanner}
+  <BarcodeScanner 
+    onScan={handleCameraScan} 
+    onClose={() => showCameraScanner = false} 
+  />
+{/if}
+
+<!-- Focus Lost Warning Overlay -->
+{#if !scannerFocused}
+  <button
+    class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-3 rounded-2xl bg-red-500 px-6 py-4 text-white shadow-2xl shadow-red-500/40 animate-bounce cursor-pointer border-4 border-white"
+    onclick={() => { window.focus(); hiddenInputEl?.focus(); scannerFocused = true; }}
+  >
+    <span class="material-symbols-outlined text-3xl">barcode_scanner</span>
+    <div class="text-left">
+      <p class="font-black text-base">CLICK HERE to Activate Scanner</p>
+      <p class="text-xs opacity-80">Browser lost focus — scanner won't work until you click</p>
+    </div>
+  </button>
 {/if}
