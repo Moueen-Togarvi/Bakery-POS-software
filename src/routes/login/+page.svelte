@@ -16,6 +16,7 @@
 <main class="min-h-screen bg-slate-50 flex items-center justify-center p-4">
   <div class="w-full max-w-sm bg-white rounded-2xl shadow-xl p-8 border border-primary/10">
     <div class="text-center mb-8">
+      <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 text-primary mb-4">
         {#if logoUrl && logoUrl.length > 0}
           <img src={logoUrl} alt="Logo" class="h-14 w-14 object-contain" on:error={(e) => e.target.style.display = 'none'} />
         {/if}
