@@ -555,7 +555,7 @@
       </div>
     {/if}
 
-    <div class="no-scrollbar grid flex-1 min-h-0 grid-cols-2 gap-2 overflow-y-auto px-2 py-2 sm:gap-3 sm:px-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+    <div class="no-scrollbar grid flex-1 min-h-0 grid-cols-2 gap-2 overflow-y-auto px-2 py-2 items-start content-start sm:gap-3 sm:px-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
       {#if filteredProducts.length === 0}
         <div class="col-span-full flex flex-col items-center justify-center py-12 px-4">
           <img src="/no_products_provided.png" alt="No products found" class="w-72 h-72 object-contain mb-2 animate-in fade-in zoom-in duration-500" />
@@ -564,13 +564,13 @@
       {:else}
         {#each filteredProducts as product}
           <button
-            class="group flex w-full cursor-pointer flex-col overflow-hidden rounded-lg bg-white text-left transition-all hover:-translate-y-1 hover:shadow-xl active:scale-[0.98] border border-primary/10 hover:border-primary/30 disabled:opacity-60 disabled:cursor-not-allowed sm:rounded-xl"
+            class="group flex w-full cursor-pointer flex-col overflow-hidden rounded-lg bg-white text-left transition-all hover:-translate-y-1 hover:shadow-xl active:scale-[0.98] border border-primary/10 hover:border-primary/30 disabled:opacity-60 disabled:cursor-not-allowed sm:rounded-xl self-start"
             onclick={() => updateCart(product.id, 1)}
             disabled={cartLoading || product.stock <= 0}
           >
-            <div class="relative h-24 overflow-hidden bg-slate-50 border-b border-primary/10 sm:h-28 md:h-32 lg:h-36">
+            <div class="relative h-24 overflow-hidden bg-white border-b border-primary/10 sm:h-28 md:h-32 lg:h-36">
               <img
-                class={`h-full w-full object-cover transition-transform duration-500 ${product.stock > 0 ? 'group-hover:scale-110' : 'grayscale'}`}
+                class={`h-full w-full object-contain p-1 transition-transform duration-500 ${product.stock > 0 ? 'group-hover:scale-105' : 'grayscale'}`}
                 src={product.imageUrl || '/assets/checkout-screen.png'}
                 alt={product.name}
                 onerror={(e) => (e.currentTarget.src = '/assets/checkout-screen.png')}
