@@ -4,9 +4,10 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        primary: '#ee8c2b',
-        'background-light': '#f8f7f6',
-        'background-dark': '#221910'
+        primary: '#0073B1',
+        secondary: '#FF9900',
+        'background-light': '#f8fafc',
+        'background-dark': '#0f172a'
       },
       fontFamily: {
         display: ['Work Sans', 'sans-serif']

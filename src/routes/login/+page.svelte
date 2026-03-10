@@ -5,7 +5,7 @@
 
   export let form: ActionData;
   let busy = false;
-  $: storeName = $page.data.storeName ?? 'OvenFresh POS';
+  $: storeName = $page.data.storeName ?? 'Satluj Solar';
   $: logoUrl = $page.data.logoUrl ?? '';
 </script>
 
@@ -16,14 +16,12 @@
 <main class="min-h-screen bg-slate-50 flex items-center justify-center p-4">
   <div class="w-full max-w-sm bg-white rounded-2xl shadow-xl p-8 border border-primary/10">
     <div class="text-center mb-8">
-      <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 text-primary mb-4">
-        {#if logoUrl}
-          <img src={logoUrl} alt="Logo" class="h-12 w-12 object-contain" />
-        {:else}
-          <span class="material-symbols-outlined text-3xl">local_cafe</span>
+        {#if logoUrl && logoUrl.length > 0}
+          <img src={logoUrl} alt="Logo" class="h-14 w-14 object-contain" on:error={(e) => e.target.style.display = 'none'} />
         {/if}
+        <span class="material-symbols-outlined text-4xl" class:hidden={logoUrl && logoUrl.length > 0}>solar_power</span>
       </div>
-      <h1 class="text-2xl font-bold text-slate-900">{storeName}</h1>
+      <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">{storeName}</h1>
       <p class="text-slate-500 mt-1">Sign in to continue</p>
     </div>
 

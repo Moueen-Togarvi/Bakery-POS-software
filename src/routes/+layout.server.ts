@@ -3,7 +3,7 @@ import { getSetting } from '$lib/server/pos';
 
 export const load: LayoutServerLoad = async ({ locals }) => {
     let logoUrl: string | null = null;
-    let storeName: string | null = 'OvenFresh POS';
+    let storeName: string | null = 'Satluj Solar';
 
     try {
         const [logo, name] = await Promise.all([
@@ -11,7 +11,7 @@ export const load: LayoutServerLoad = async ({ locals }) => {
             getSetting('store_name')
         ]);
         logoUrl = logo;
-        storeName = name || 'OvenFresh POS';
+        storeName = name || 'Satluj Solar';
     } catch (error: any) {
         const message = error instanceof Error ? error.message : String(error);
         console.warn(`[Layout] Branding settings unavailable, continuing with defaults: ${message}`);

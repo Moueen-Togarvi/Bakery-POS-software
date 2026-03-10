@@ -7,7 +7,7 @@
 
   let busy = $state(false);
   let uploading = $state(false);
-  let storeName = $state(data.storeName ?? 'OvenFresh POS');
+  let storeName = $state(data.storeName ?? 'Satluj Solar');
   let logoUrl = $state(data.logoUrl ?? '');
   let taxRate = $state(data.taxRate ?? '20');
 </script>

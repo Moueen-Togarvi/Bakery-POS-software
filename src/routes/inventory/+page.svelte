@@ -22,7 +22,7 @@
   };
 
   let { data } = $props();
-  const storeName = $derived(data.storeName ?? 'OvenFresh POS');
+  const storeName = $derived(data.storeName ?? 'Satluj Solar');
 
   let rows = $state<InventoryRow[]>(data.rows);
   let categories = $state<Category[]>(data.categories.filter((c) => c.id !== 0));

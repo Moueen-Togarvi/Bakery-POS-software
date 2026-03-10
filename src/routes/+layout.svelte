@@ -13,7 +13,7 @@
     <TopNav
       pathname={$page.url.pathname}
       logoUrl={data.logoUrl ?? undefined}
-      storeName={data.storeName ?? 'OvenFresh POS'}
+      storeName={data.storeName ?? 'Satluj Solar'}
       username={data.username ?? ''}
     />
   {/if}

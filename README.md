@@ -1,4 +1,4 @@
-# Bakery POS Software
+# Satluj Solar POS Software
 
 A fully database-backed Point of Sale system built with **SvelteKit** + **Neon PostgreSQL**.
 
@@ -37,7 +37,7 @@ npm run dev
 | Table | Purpose |
 |---|---|
 | `categories` | Product categories |
-| `products` | Bakery items with price and image |
+| `products` | Solar products with price and image |
 | `cart_items` | Active cart (persistent across requests) |
 | `orders` | Completed sale records |
 | `order_items` | Line items per completed order |

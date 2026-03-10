@@ -7,7 +7,7 @@
   import { fade, fly } from 'svelte/transition';
 
   let { data } = $props();
-  const storeName = $derived(data.storeName ?? 'OvenFresh POS');
+  const storeName = $derived(data.storeName ?? 'Satluj Solar');
 
   let searchQuery = $state($page.url.searchParams.get('search') || '');
   let period = $state((data.period || 'daily') as 'daily' | 'weekly' | 'monthly' | 'custom');

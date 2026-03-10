@@ -54,7 +54,7 @@
   let discountValue = $state(0);
   const paymentMethods: PaymentMethod[] = ['Cash', 'Card', 'QR'];
   const fractionalUnits = new Set(['kg', 'lb']);
-  const storeName = $derived(data.storeName ?? 'OvenFresh POS');
+  const storeName = $derived(data.storeName ?? 'Satluj Solar');
 
   let cartItemCount = $derived(cart.items.reduce((sum, item) => sum + item.quantity, 0));
   let maxDiscount = $derived(cart.subtotal > 0 ? cart.subtotal : 0);
@@ -308,7 +308,7 @@
       receipt = body.receipt;
       cart = body.cart;
       doPrint(receipt);
-      toastStore.success('Order Completed!', 'Your fresh treats are baking 🍩');
+      toastStore.success('Order Completed!', 'Solar energy for a brighter future ☀️');
       
       // Force refresh of page data (sales stats)
       await invalidateAll();

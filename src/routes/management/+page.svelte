@@ -7,7 +7,7 @@
   import { fade, fly } from 'svelte/transition';
 
   let { data, form } = $props();
-  const storeName = $derived(data.storeName ?? 'OvenFresh POS');
+  const storeName = $derived(data.storeName ?? 'Satluj Solar');
 
   let activeTab = $state<'staff' | 'finance'>('staff');
   let busy = $state(false);
