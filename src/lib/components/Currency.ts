@@ -1,8 +1,8 @@
 export const formatCurrency = (value: number | string) => {
   try {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-PK', {
       style: 'currency',
-      currency: 'SAR',
+      currency: 'PKR',
       minimumFractionDigits: 0,
       maximumFractionDigits: 2
     }).format(typeof value === 'number' ? value : Number(value));
@@ -10,6 +10,6 @@ export const formatCurrency = (value: number | string) => {
     console.error('Currency formatting error:', error);
     // Fallback to basic formatting
     const num = typeof value === 'number' ? value : Number(value);
-    return `﷼ ${num.toFixed(2)}`;
+    return `Rs. ${num.toFixed(2)}`;
   }
 };

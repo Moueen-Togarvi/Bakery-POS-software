@@ -48,13 +48,11 @@ async function buildCartSummary(): Promise<CartSummary> {
   }));
 
   const subtotal = round2(cartItems.reduce((s: number, i: any) => s + i.lineTotal, 0));
-  const [openPaymentMethod, taxRateSetting] = await Promise.all([
-    getSetting('open_payment_method'),
-    getSetting('tax_rate')
+  const [openPaymentMethod] = await Promise.all([
+    getSetting('open_payment_method')
   ]);
-  const taxRate = parseTaxRate(taxRateSetting);
-  const tax = round2(subtotal * taxRate);
-  const total = round2(subtotal + tax);
+  const tax = 0;
+  const total = subtotal;
   const paymentMethod = PAYMENT_METHODS.includes(openPaymentMethod as PaymentMethod)
     ? (openPaymentMethod as PaymentMethod)
     : 'Cash';
@@ -295,8 +293,8 @@ export async function completeOpenOrder(paymentMethod?: PaymentMethod): Promise<
 
   // Verify sufficient stock for all items
   for (const item of cart.items) {
-    if (item.currentStock < item.quantity) {
-      throw new Error(`Insufficient stock for "${item.name}". Available: ${item.currentStock}, Requested: ${item.quantity}`);
+    if ((item as any).currentStock < item.quantity) {
+      throw new Error(`Insufficient stock for "${item.name}". Available: ${(item as any).currentStock}, Requested: ${item.quantity}`);
     }
   }
 

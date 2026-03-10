@@ -606,7 +606,7 @@
                 <div class="flex gap-2 mb-4">
                     <input
                         class="flex-1 rounded-lg border border-slate-200 px-3 py-1.5 focus:border-primary outline-none transition-all"
-                        placeholder="e.g. Biscuits"
+                        placeholder="e.g. Solar Panels"
                         bind:value={categoryName}
                     />
                     <button class="rounded-lg bg-primary px-4 py-1.5 font-bold text-white text-xs hover:bg-primary-dark transition-colors inline-flex items-center gap-2" onclick={addCategory} disabled={busy}>
@@ -891,12 +891,12 @@
 {#if editModalOpen}
   <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm transition-all duration-300">
     <div class="w-full max-w-3xl rounded-3xl bg-white p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-300">
-      <div class="flex items-center justify-between mb-6">
+      <div class="relative flex items-center justify-between mb-6 pr-8">
         <div>
           <h3 class="text-xl font-bold text-slate-900">Edit Product</h3>
           <p class="text-[11px] text-slate-500 font-medium">Update item details and stock levels</p>
         </div>
-        <button class="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-all" onclick={() => (editModalOpen = false)}>
+        <button class="absolute top-0 right-0 flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-all" onclick={() => (editModalOpen = false)}>
           <span class="material-symbols-outlined text-lg">close</span>
         </button>
       </div>

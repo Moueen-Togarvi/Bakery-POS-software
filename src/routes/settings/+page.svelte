@@ -9,7 +9,6 @@
   let uploading = $state(false);
   let storeName = $state(data.storeName ?? 'Satluj Solar');
   let logoUrl = $state(data.logoUrl ?? '');
-  let taxRate = $state(data.taxRate ?? '20');
 </script>
 
 <svelte:head>
@@ -28,26 +27,13 @@
     {/if}
 
     <form method="POST" action="?/updateBranding" use:enhance={() => { busy = true; return async ({ update }) => { busy = false; await update(); }; }} class="mt-6 space-y-5">
-      <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div class="grid grid-cols-1 gap-4 md:grid-cols-1">
         <label class="block space-y-2">
           <span class="text-sm font-semibold text-slate-700">Store Name</span>
           <input
             name="storeName"
             class="w-full rounded-lg border border-primary/20 px-3 py-2 outline-none focus:border-primary"
             bind:value={storeName}
-            required
-          />
-        </label>
-        <label class="block space-y-2">
-          <span class="text-sm font-semibold text-slate-700">Tax Rate (%)</span>
-          <input
-            name="taxRate"
-            class="w-full rounded-lg border border-primary/20 px-3 py-2 outline-none focus:border-primary"
-            type="number"
-            min="0"
-            max="100"
-            step="0.1"
-            bind:value={taxRate}
             required
           />
         </label>

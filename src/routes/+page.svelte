@@ -411,7 +411,6 @@
     <div class="totals">
       <table>
         <tr><td>Subtotal:</td><td class="right">${formatCurrency(rcpt.subtotal)}</td></tr>
-        <tr><td>Tax:</td><td class="right">${formatCurrency(rcpt.tax)}</td></tr>
         <tr class="grand-total"><td class="bold">TOTAL:</td><td class="right bold">${formatCurrency(rcpt.total)}</td></tr>
       </table>
     </div>
@@ -714,10 +713,6 @@
         <div class="flex justify-between text-sm">
           <span class="text-slate-500">Subtotal</span>
           <span class="font-medium text-slate-800">{formatCurrency(cart.subtotal)}</span>
-        </div>
-        <div class="flex justify-between text-sm">
-          <span class="text-slate-500">Tax ({Math.round(data.taxRate * 100)}%)</span>
-          <span class="font-medium text-slate-800">{formatCurrency(cart.tax)}</span>
         </div>
         <div class="grid grid-cols-[1fr_auto] items-center gap-2 text-sm">
           <span class="text-slate-500">Discount</span>
