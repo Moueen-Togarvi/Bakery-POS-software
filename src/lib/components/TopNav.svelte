@@ -17,6 +17,7 @@
   }
 
   let showSupport = $state(false);
+  let showMobileNav = $state(false);
 </script>
 
 <header class="sticky top-0 z-30 border-b border-primary/10 bg-white shadow-sm">
@@ -30,7 +31,7 @@
       <h1 class="text-lg font-bold tracking-tight text-slate-900 md:text-xl">{storeName}</h1>
     </a>
 
-    <nav class="no-scrollbar mx-auto flex w-full max-w-[720px] items-center justify-center gap-2 overflow-x-auto rounded-xl border border-primary/10 bg-primary/5 p-1">
+    <nav class="no-scrollbar mx-auto hidden w-full max-w-[720px] items-center justify-center gap-2 overflow-x-auto rounded-xl border border-primary/10 bg-primary/5 p-1 md:flex">
       {#each links as link}
         <a
           href={link.href}
@@ -46,7 +47,15 @@
       {/each}
     </nav>
 
-    <div class="flex items-center gap-3 justify-self-end">
+    <div class="flex items-center gap-2 justify-self-end md:gap-3">
+      <button
+        class="flex h-9 w-9 items-center justify-center rounded-lg border border-primary/10 bg-white text-slate-700 transition-all hover:bg-primary/5 md:hidden"
+        aria-label="Toggle navigation"
+        aria-expanded={showMobileNav}
+        onclick={() => (showMobileNav = !showMobileNav)}
+      >
+        <span class="material-symbols-outlined text-xl">{showMobileNav ? 'close' : 'menu'}</span>
+      </button>
       <div class="relative flex items-center">
         <button 
           onclick={() => showSupport = !showSupport}
@@ -55,7 +64,7 @@
         >
           <span class="material-symbols-outlined text-xl">info</span>
         </button>
-        
+
         {#if showSupport}
           <div class="absolute right-0 top-full mt-2 w-48 rounded-xl border border-primary/10 bg-white p-3 shadow-xl z-50 animate-in fade-in slide-in-from-top-1">
             <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Support Number</p>
@@ -73,4 +82,25 @@
       </form>
     </div>
   </div>
+
+  {#if showMobileNav}
+    <div class="md:hidden border-t border-primary/10 bg-white">
+      <div class="flex flex-col gap-1 p-3">
+        {#each links as link}
+          <a
+            href={link.href}
+            aria-current={isActive(link.href, $page.url.pathname) ? 'page' : undefined}
+            class={`rounded-lg px-3 py-2 text-sm font-bold transition-all ${
+              isActive(link.href, $page.url.pathname)
+                ? 'bg-primary text-white shadow-md shadow-primary/20'
+                : 'text-slate-700 hover:bg-primary/10 hover:text-primary'
+            }`}
+            onclick={() => (showMobileNav = false)}
+          >
+            {link.label}
+          </a>
+        {/each}
+      </div>
+    </div>
+  {/if}
 </header>

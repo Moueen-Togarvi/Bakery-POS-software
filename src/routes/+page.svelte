@@ -40,6 +40,7 @@
   let uiMessage = $state('');
   let receipt = $state<SaleReceipt | null>(null);
   let showReceipt = $state(false);
+  let showMobileCart = $state(false);
   // ─── Barcode Scanner State Machine ───────────────────────────────────────────
   // Physical scanners act like keyboards but emit characters very fast (< 50ms apart).
   // Strategy: Buffer characters when they arrive fast back-to-back.
@@ -307,6 +308,7 @@
       
       receipt = body.receipt;
       cart = body.cart;
+      showMobileCart = false;
       doPrint(receipt);
       toastStore.success('Order Completed!', 'Solar energy for a brighter future ☀️');
       
@@ -438,50 +440,40 @@
   <title>Sales Dashboard | {storeName}</title>
 </svelte:head>
 
-<main class="flex min-h-[calc(100vh-69px)] overflow-hidden text-sm">
+<main class="flex w-full min-w-0 min-h-[calc(100vh-69px)] overflow-x-hidden text-sm">
   <!-- Scanner Debug Overlay -->
   {#if barcodeActive || barcodeBuffer.length > 0}
     <div class="fixed top-20 left-1/2 -translate-x-1/2 z-[9999] rounded-full bg-green-600 px-6 py-2 text-sm font-bold text-white shadow-2xl border-4 border-white">
       📷 Scanning: <span class="bg-white text-green-700 px-2 rounded ml-2 font-mono">{barcodeBuffer}</span>
     </div>
   {/if}
-  <section class="flex flex-1 flex-col bg-white">
-    <div class="grid grid-cols-2 gap-2 border-b border-primary/10 p-3 lg:grid-cols-4">
-      <article class="rounded-xl bg-primary/10 p-2">
-        <p class="text-[10px] font-semibold text-slate-600 uppercase tracking-tight">Today's Sales</p>
-        <p class="mt-0.5 text-lg font-bold text-primary">{formatCurrency(data.todaySales || 0)}</p>
+  <section class="flex flex-1 min-w-0 min-h-0 flex-col bg-white pb-28 lg:pb-0">
+    <div class="grid grid-cols-2 gap-1.5 border-b border-primary/10 px-2 py-2 sm:gap-2 sm:px-3 md:py-3 lg:grid-cols-4">
+      <article class="w-full rounded-xl bg-primary/10 p-2 min-w-0">
+        <p class="text-[10px] font-semibold text-slate-600 uppercase tracking-tight truncate">Today's Sales</p>
+        <p class="mt-0.5 text-base font-bold text-primary truncate">{formatCurrency(data.todaySales || 0)}</p>
       </article>
-      <article class="rounded-xl bg-emerald-50 p-2">
-        <p class="text-[10px] font-semibold text-slate-600 uppercase tracking-tight">Today's Returns</p>
-        <p class="mt-0.5 text-lg font-bold text-red-600">{data.todayReturns || 0}</p>
+      <article class="w-full rounded-xl bg-emerald-50 p-2 min-w-0">
+        <p class="text-[10px] font-semibold text-slate-600 uppercase tracking-tight truncate">Today's Returns</p>
+        <p class="mt-0.5 text-base font-bold text-red-600">{data.todayReturns || 0}</p>
       </article>
-      <article class="rounded-xl bg-amber-50 p-2">
-        <p class="text-[10px] font-semibold text-slate-600 uppercase tracking-tight">Active Items</p>
-        <p class="mt-0.5 text-lg font-bold text-amber-700">{products.length}</p>
+      <article class="w-full rounded-xl bg-amber-50 p-2 min-w-0">
+        <p class="text-[10px] font-semibold text-slate-600 uppercase tracking-tight truncate">Active Items</p>
+        <p class="mt-0.5 text-base font-bold text-amber-700">{products.length}</p>
       </article>
-      <article class="rounded-xl bg-sky-50 p-2">
-        <p class="text-[10px] font-semibold text-slate-600 uppercase tracking-tight">Categories</p>
-        <p class="mt-0.5 text-lg font-bold text-sky-700">
+      <article class="w-full rounded-xl bg-sky-50 p-2 min-w-0">
+        <p class="text-[10px] font-semibold text-slate-600 uppercase tracking-tight truncate">Categories</p>
+        <p class="mt-0.5 text-base font-bold text-sky-700">
           {Math.max(0, categories.length - 1)}
         </p>
-        <p class="mt-1 text-[9px] text-slate-500">
+        <p class="mt-0.5 text-[9px] text-slate-500 truncate">
           Total active categories
         </p>
       </article>
     </div>
 
 
-    <div class="flex items-center gap-3 border-b border-primary/10 p-3">
-      <!-- Scanner Status -->
-      <button
-        class={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-bold transition-all shrink-0 ${scannerFocused ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600 animate-pulse cursor-pointer'}`}
-        onclick={() => { window.focus(); hiddenInputEl?.focus(); scannerFocused = true; }}
-        title="Click to activate scanner"
-      >
-        <span class="material-symbols-outlined text-sm">{scannerFocused ? 'barcode_scanner' : 'warning'}</span>
-        {scannerFocused ? 'Scanner Ready' : '⚠ Click to Activate'}
-      </button>
-
+    <div class="flex items-center gap-2 border-b border-primary/10 px-2 py-2 sm:gap-3 sm:px-3">
       <!-- INVISIBLE SCANNER TRAP -->
       <input
         type="text"
@@ -502,15 +494,6 @@
           }, 10);
         }}
       />
-
-      <button 
-        class="flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1.5 text-[11px] font-bold text-primary transition-all hover:bg-primary/20 shrink-0"
-        onclick={() => showCameraScanner = true}
-        title="Open camera scanner"
-      >
-        <span class="material-symbols-outlined text-sm">photo_camera</span>
-        Camera
-      </button>
 
       <div class="relative flex-1">
         <span class="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-lg">search</span>
@@ -534,7 +517,7 @@
       </div>
     </div>
 
-    <div class="no-scrollbar flex gap-2 overflow-x-auto border-b border-primary/5 p-3">
+    <div class="no-scrollbar flex gap-2 overflow-x-auto border-b border-primary/5 px-3 py-2">
       {#each categories as category}
         <button
           class={`whitespace-nowrap rounded-full px-4 py-1.5 text-xs font-semibold transition-colors ${
@@ -550,7 +533,7 @@
     </div>
 
     {#if selectedCategoryId !== 0 && categoryFlavors.length > 0}
-      <div class="no-scrollbar flex gap-2 overflow-x-auto border-b border-primary/5 px-3 pb-3">
+      <div class="no-scrollbar flex gap-2 overflow-x-auto border-b border-primary/5 px-3 py-2">
         <button
           class={`whitespace-nowrap rounded-full px-3 py-1 text-[11px] font-semibold ${
             !selectedFlavor ? 'bg-amber-500 text-white' : 'bg-amber-50 text-amber-700'
@@ -572,7 +555,7 @@
       </div>
     {/if}
 
-    <div class="no-scrollbar grid grid-cols-2 gap-2 overflow-y-auto p-3 md:grid-cols-4 xl:grid-cols-6">
+    <div class="no-scrollbar grid flex-1 min-h-0 grid-cols-2 gap-2 overflow-y-auto px-2 py-2 sm:gap-3 sm:px-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
       {#if filteredProducts.length === 0}
         <div class="col-span-full flex flex-col items-center justify-center py-12 px-4">
           <img src="/no_products_provided.png" alt="No products found" class="w-72 h-72 object-contain mb-2 animate-in fade-in zoom-in duration-500" />
@@ -581,11 +564,11 @@
       {:else}
         {#each filteredProducts as product}
           <button
-            class="group flex cursor-pointer flex-col overflow-hidden rounded-xl bg-white text-left transition-all hover:-translate-y-1 hover:shadow-xl active:scale-[0.98] border-2 border-primary/10 hover:border-primary/30 disabled:opacity-60 disabled:cursor-not-allowed"
+            class="group flex w-full cursor-pointer flex-col overflow-hidden rounded-lg bg-white text-left transition-all hover:-translate-y-1 hover:shadow-xl active:scale-[0.98] border border-primary/10 hover:border-primary/30 disabled:opacity-60 disabled:cursor-not-allowed sm:rounded-xl"
             onclick={() => updateCart(product.id, 1)}
             disabled={cartLoading || product.stock <= 0}
           >
-            <div class="relative aspect-square overflow-hidden bg-slate-50 border-b border-primary/10">
+            <div class="relative h-24 overflow-hidden bg-slate-50 border-b border-primary/10 sm:h-28 md:h-32 lg:h-36">
               <img
                 class={`h-full w-full object-cover transition-transform duration-500 ${product.stock > 0 ? 'group-hover:scale-110' : 'grayscale'}`}
                 src={product.imageUrl || '/assets/checkout-screen.png'}
@@ -598,22 +581,22 @@
                 </div>
               {/if}
             </div>
-            <div class="p-2 space-y-2 bg-slate-50/50">
-              <div class="rounded-md bg-white border border-primary/5 p-1.5 shadow-sm">
-                <div class="flex items-center justify-between gap-1 mb-0.5">
-                  <h3 class="line-clamp-1 text-[11px] font-bold text-slate-800">
+            <div class="p-1.5 space-y-1.5 bg-slate-50/50 sm:p-2">
+              <div class="rounded-md bg-white border border-primary/5 px-1.5 py-1 shadow-sm">
+                <div class="flex items-center justify-between gap-1">
+                  <h3 class="line-clamp-1 text-[10px] font-bold text-slate-800 sm:text-[11px]">
                     {product.name}
                   </h3>
-                  <span class={`shrink-0 rounded px-1.5 py-0.5 text-[9px] font-bold ${product.stock <= 5 ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                  <span class={`shrink-0 rounded px-1 py-0.5 text-[9px] font-bold ${product.stock <= 5 ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
                     {product.stock} {product.unitType}
                   </span>
                 </div>
               </div>
-              <div class="px-1 flex items-center justify-between">
-                <p class="text-[11px] font-black text-primary">
+              <div class="flex items-center justify-between px-0.5">
+                <p class="text-[10px] font-black text-primary sm:text-[11px]">
                   {formatCurrency(product.price)}
                 </p>
-                <span class={`material-symbols-outlined !text-sm transition-colors ${product.stock > 0 ? 'text-primary/40 group-hover:text-primary' : 'text-slate-300'}`}>
+                <span class={`material-symbols-outlined !text-[18px] transition-colors ${product.stock > 0 ? 'text-primary/40 group-hover:text-primary' : 'text-slate-300'}`}>
                   {product.stock > 0 ? 'add_circle' : 'block'}
                 </span>
               </div>
@@ -625,13 +608,34 @@
 
   </section>
 
-  <aside class="hidden w-full max-w-[400px] flex-col border-l border-primary/10 bg-white shadow-xl lg:flex h-[calc(100vh-69px)]">
+  {#if showMobileCart}
+    <button
+      class="fixed inset-0 z-30 bg-black/40 lg:hidden"
+      aria-label="Close cart"
+      onclick={() => (showMobileCart = false)}
+    ></button>
+  {/if}
+
+  <aside
+    class={`w-full flex-col border-primary/10 bg-white shadow-xl ${
+      showMobileCart ? 'fixed inset-0 z-40 flex' : 'hidden'
+    } lg:static lg:flex lg:h-[calc(100vh-69px)] lg:max-w-[400px] lg:border-l`}
+  >
     <div class="border-b border-primary/5 p-4 shrink-0">
       <div class="mb-2 flex items-center justify-between">
         <h2 class="text-xl font-bold text-slate-900">Current Order</h2>
-        <button class="text-primary" onclick={clearOrder} disabled={cartLoading}>
-          <span class="material-symbols-outlined">delete_sweep</span>
-        </button>
+        <div class="flex items-center gap-2">
+          <button class="text-primary" onclick={clearOrder} disabled={cartLoading}>
+            <span class="material-symbols-outlined">delete_sweep</span>
+          </button>
+          <button
+            class="lg:hidden text-slate-500 hover:text-red-500 transition-colors"
+            onclick={() => (showMobileCart = false)}
+            aria-label="Close cart"
+          >
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
       </div>
       <p class="text-sm text-slate-500 font-mono">{cart.orderNo} • {cart.customerName}</p>
     </div>
@@ -752,6 +756,26 @@
   </aside>
 </main>
 
+{#if !showMobileCart}
+  <div class="fixed bottom-0 left-0 right-0 z-20 border-t border-primary/10 bg-white/95 backdrop-blur lg:hidden">
+    <div class="flex items-center justify-between gap-3 px-4 py-3">
+      <div class="min-w-0">
+        <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Cart</p>
+        <p class="text-base font-bold text-slate-900">
+          {formatCurrency(payableTotal)}
+          <span class="ml-2 text-xs font-semibold text-slate-500">({cartItemCount} items)</span>
+        </p>
+      </div>
+      <button
+        class="shrink-0 rounded-full bg-primary px-5 py-2 text-sm font-bold text-white shadow-lg shadow-primary/30 active:scale-95 transition-all"
+        onclick={() => (showMobileCart = true)}
+      >
+        View Cart
+      </button>
+    </div>
+  </div>
+{/if}
+
 {#if showReceipt}
   <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
     <div class="w-full max-w-sm overflow-hidden rounded-2xl bg-white shadow-2xl">
@@ -794,18 +818,4 @@
     onScan={handleCameraScan} 
     onClose={() => showCameraScanner = false} 
   />
-{/if}
-
-<!-- Focus Lost Warning Overlay -->
-{#if !scannerFocused}
-  <button
-    class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-3 rounded-2xl bg-red-500 px-6 py-4 text-white shadow-2xl shadow-red-500/40 animate-bounce cursor-pointer border-4 border-white"
-    onclick={() => { window.focus(); hiddenInputEl?.focus(); scannerFocused = true; }}
-  >
-    <span class="material-symbols-outlined text-3xl">barcode_scanner</span>
-    <div class="text-left">
-      <p class="font-black text-base">CLICK HERE to Activate Scanner</p>
-      <p class="text-xs opacity-80">Browser lost focus — scanner won't work until you click</p>
-    </div>
-  </button>
 {/if}

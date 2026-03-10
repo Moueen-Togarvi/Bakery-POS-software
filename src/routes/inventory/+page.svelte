@@ -742,16 +742,6 @@
                     <p class="text-[11px] text-slate-500">Real-time stock management</p>
                 </div>
                 <div class="flex items-center gap-2">
-                    <!-- Scanner Status -->
-                    <button
-                        class={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-bold transition-all shrink-0 ${scannerFocused ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600 animate-pulse cursor-pointer'}`}
-                        onclick={() => { window.focus(); hiddenInputEl?.focus(); scannerFocused = true; }}
-                        title="Scanner status (click to re-activate focus if needed)"
-                    >
-                        <span class="material-symbols-outlined text-xs">{scannerFocused ? 'barcode_scanner' : 'warning'}</span>
-                        {scannerFocused ? 'Scanner Ready' : '⚠ Click to Activate'}
-                    </button>
-
                     <!-- INVISIBLE SCANNER TRAP -->
                     <input
                       type="text"
@@ -807,7 +797,7 @@
                 <table class="w-full text-left compact-table">
                     <thead class="bg-slate-50 text-slate-500 font-bold text-[10px] uppercase tracking-wider">
                         <tr>
-                            <th class="px-4 py-3">Image</th>
+                            <th class="px-4 py-3 text-center">Image</th>
                             <th class="px-4 py-3">Product Info</th>
                             <th class="px-4 py-3">Category</th>
                             <th class="px-4 py-3 text-center">Flavor</th>
@@ -822,8 +812,8 @@
                     <tbody class="divide-y divide-slate-50">
                         {#each filteredRows as row}
                             <tr class="hover:bg-slate-50/50 transition-colors">
-                                <td class="px-4 py-3">
-                                  <div class="h-10 w-10 overflow-hidden rounded-lg bg-slate-100 border border-slate-200">
+                                <td class="px-4 py-3 text-center">
+                                  <div class="mx-auto h-10 w-10 overflow-hidden rounded-lg bg-slate-100 border border-slate-200">
                                     <img 
                                       class="h-full w-full object-cover" 
                                       src={row.imageUrl || '/assets/checkout-screen.png'} 
@@ -1070,15 +1060,3 @@
 {/if}
 
 <!-- Focus Lost Warning Overlay -->
-{#if !scannerFocused}
-  <button
-    class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-3 rounded-2xl bg-red-500 px-6 py-4 text-white shadow-2xl shadow-red-500/40 animate-bounce cursor-pointer border-4 border-white"
-    onclick={() => { window.focus(); hiddenInputEl?.focus(); scannerFocused = true; }}
-  >
-    <span class="material-symbols-outlined text-3xl">barcode_scanner</span>
-    <div class="text-left">
-      <p class="font-black text-base">CLICK HERE to Activate Scanner</p>
-      <p class="text-xs opacity-80">Browser lost focus — scanner won't work until you click</p>
-    </div>
-  </button>
-{/if}

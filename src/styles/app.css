@@ -64,11 +64,15 @@ body {
   }
 }
 
-/* Ensure touch targets are comfortable */
-button, 
-input, 
+/* Ensure touch targets are comfortable for form controls */
+input,
 select {
   min-height: 40px; /* Reliable hit area */
+}
+
+/* Standalone action buttons should also have comfortable touch targets */
+.btn-touch {
+  min-height: 40px;
 }
 
 /* Compact specific elements for POS */
