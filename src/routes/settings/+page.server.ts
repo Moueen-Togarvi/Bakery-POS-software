@@ -9,7 +9,7 @@ export const load: PageServerLoad = async () => {
   ]);
 
   return {
-    storeName: storeName || 'Bakery POS',
+    storeName: storeName || 'hot&Cold',
     logoUrl: logoUrl || ''
   };
 };

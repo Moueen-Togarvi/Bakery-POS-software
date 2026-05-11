@@ -51,7 +51,7 @@ async function reseed() {
 
     // 3. Seed Settings
     console.log('Seeding settings...');
-    await (sql as any).query("INSERT INTO settings (key, value) VALUES ('store_name', 'Bakery POS')");
+    await (sql as any).query("INSERT INTO settings (key, value) VALUES ('store_name', 'hot&Cold')");
     await (sql as any).query("INSERT INTO settings (key, value) VALUES ('logo_url', '/logo-bakery.svg')");
     await (sql as any).query("INSERT INTO settings (key, value) VALUES ('tax_rate', '0')");
     console.log('Settings seeded.');

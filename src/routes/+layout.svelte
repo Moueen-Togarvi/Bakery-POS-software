@@ -41,7 +41,7 @@
     <TopNav
       pathname={$page.url.pathname}
       logoUrl={data.logoUrl ?? undefined}
-      storeName={data.storeName ?? 'Bakery POS'}
+      storeName={data.storeName ?? 'hot&Cold'}
       username={data.username ?? ''}
     />
   {/if}

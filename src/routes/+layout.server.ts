@@ -4,7 +4,7 @@ import { consumeFlashToast } from '$lib/server/flash-toast';
 
 export const load: LayoutServerLoad = async ({ locals, cookies }) => {
     let logoUrl: string | null = null;
-    let storeName: string | null = 'Bakery POS';
+    let storeName: string | null = 'hot&Cold';
     const flashToast = consumeFlashToast(cookies);
 
     try {
@@ -13,7 +13,7 @@ export const load: LayoutServerLoad = async ({ locals, cookies }) => {
             getSetting('store_name')
         ]);
         logoUrl = logo;
-        storeName = name || 'Bakery POS';
+        storeName = name || 'hot&Cold';
     } catch (error: any) {
         const message = error instanceof Error ? error.message : String(error);
         console.warn(`[Layout] Branding settings unavailable, continuing with defaults: ${message}`);
