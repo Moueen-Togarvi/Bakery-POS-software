@@ -9,7 +9,7 @@ export const load: PageServerLoad = async () => {
   ]);
 
   return {
-    storeName: storeName || 'Satluj Solar',
+    storeName: storeName || 'Bakery POS',
     logoUrl: logoUrl || ''
   };
 };

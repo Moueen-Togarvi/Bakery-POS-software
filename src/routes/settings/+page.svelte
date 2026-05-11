@@ -7,7 +7,7 @@
 
   let busy = $state(false);
   let uploading = $state(false);
-  let storeName = $state(data.storeName ?? 'Satluj Solar');
+  let storeName = $state(data.storeName ?? 'Bakery POS');
   let logoUrl = $state(data.logoUrl ?? '');
 </script>
 
@@ -26,7 +26,27 @@
       </div>
     {/if}
 
-    <form method="POST" action="?/updateBranding" use:enhance={() => { busy = true; return async ({ update }) => { busy = false; await update(); }; }} class="mt-6 space-y-5">
+    <form
+      method="POST"
+      action="?/updateBranding"
+      use:enhance={() => {
+        busy = true;
+        return async ({ result, update }) => {
+          busy = false;
+          await update();
+
+          if (result.type === 'success') {
+            toastStore.success('Store settings updated successfully.');
+            return;
+          }
+
+          if (result.type === 'failure') {
+            toastStore.error((result.data as { message?: string } | undefined)?.message ?? 'Store settings update failed.');
+          }
+        };
+      }}
+      class="mt-6 space-y-5"
+    >
       <div class="grid grid-cols-1 gap-4 md:grid-cols-1">
         <label class="block space-y-2">
           <span class="text-sm font-semibold text-slate-700">Store Name</span>
@@ -82,7 +102,7 @@
             <img src={logoUrl} alt="Store Logo" class="h-12 w-12 rounded-lg border border-slate-200 object-contain bg-white p-1" />
           {:else}
             <div class="flex h-12 w-12 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-300">
-              <span class="material-symbols-outlined">storefront</span>
+              <span class="material-symbols-outlined">bakery_dining</span>
             </div>
           {/if}
           <p class="text-sm font-bold text-slate-900">{storeName}</p>

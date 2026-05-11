@@ -55,7 +55,7 @@
   let discountValue = $state(0);
   const paymentMethods: PaymentMethod[] = ['Cash', 'Card', 'QR'];
   const fractionalUnits = new Set(['kg', 'lb']);
-  const storeName = $derived(data.storeName ?? 'Satluj Solar');
+  const storeName = $derived(data.storeName ?? 'hot&Cold');
 
   let cartItemCount = $derived(cart.items.reduce((sum, item) => sum + item.quantity, 0));
   let maxDiscount = $derived(cart.subtotal > 0 ? cart.subtotal : 0);
@@ -310,7 +310,7 @@
       cart = body.cart;
       showMobileCart = false;
       doPrint(receipt);
-      toastStore.success('Order Completed!', 'Solar energy for a brighter future ☀️');
+      toastStore.success('Order Completed!', 'Fresh bakery items served.');
       
       // Force refresh of page data (sales stats)
       await invalidateAll();

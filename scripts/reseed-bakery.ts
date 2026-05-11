@@ -13,7 +13,7 @@ if (!DATABASE_URL) {
 const sql = neon(DATABASE_URL);
 
 async function reseed() {
-  console.log('--- RE-SEEDING DATABASE FOR SATLUJ SOLAR ---');
+  console.log('--- RE-SEEDING DATABASE FOR BAKERY POS ---');
 
   try {
     // 1. Truncate all tables
@@ -51,8 +51,8 @@ async function reseed() {
 
     // 3. Seed Settings
     console.log('Seeding settings...');
-    await (sql as any).query("INSERT INTO settings (key, value) VALUES ('store_name', 'Satluj Solar')");
-    await (sql as any).query("INSERT INTO settings (key, value) VALUES ('logo_url', '/logo.png')");
+    await (sql as any).query("INSERT INTO settings (key, value) VALUES ('store_name', 'Bakery POS')");
+    await (sql as any).query("INSERT INTO settings (key, value) VALUES ('logo_url', '/logo-bakery.svg')");
     await (sql as any).query("INSERT INTO settings (key, value) VALUES ('tax_rate', '0')");
     console.log('Settings seeded.');
 
@@ -63,7 +63,7 @@ async function reseed() {
 
     // 5. Seed Categories
     console.log('Seeding categories...');
-    const categories = ['Solar Panels', 'Inverters', 'Batteries', 'Accessories'];
+    const categories = ['Breads', 'Pastries', 'Cakes', 'Cookies', 'Beverages'];
     const categoryIds: any = {};
     for (const name of categories) {
       const res = await (sql as any).query('INSERT INTO categories (name) VALUES ($1) RETURNING id', [name]);
@@ -75,54 +75,94 @@ async function reseed() {
     console.log('Seeding products...');
     const products = [
       {
-        name: 'Jinko Solar Panel 550W',
-        price: 35000,
-        buying_price: 32000,
-        category_id: categoryIds['Solar Panels'],
-        stock: 50,
-        sku: 'SLP-JIN-550',
+        name: 'Sourdough Loaf',
+        price: 500,
+        buying_price: 220,
+        category_id: categoryIds['Breads'],
+        stock: 24,
+        sku: 'BRD-SRD-001',
         unit_type: 'pcs',
-        flavor: 'Mono-Perc'
+        flavor: 'Classic'
       },
       {
-        name: 'Longi Solar Panel 540W',
-        price: 34000,
-        buying_price: 31000,
-        category_id: categoryIds['Solar Panels'],
+        name: 'Butter Croissant',
+        price: 280,
+        buying_price: 95,
+        category_id: categoryIds['Pastries'],
         stock: 40,
-        sku: 'SLP-LON-540',
+        sku: 'PST-CRS-002',
         unit_type: 'pcs',
-        flavor: 'High-Efficiency'
+        flavor: 'Buttery'
       },
       {
-        name: 'Huawei Inverter 10kW',
-        price: 250000,
-        buying_price: 230000,
-        category_id: categoryIds['Inverters'],
-        stock: 10,
-        sku: 'INV-HUA-10K',
+        name: 'Cinnamon Roll',
+        price: 320,
+        buying_price: 120,
+        category_id: categoryIds['Pastries'],
+        stock: 30,
+        sku: 'PST-CRL-003',
         unit_type: 'pcs',
-        flavor: 'Three-Phase'
+        flavor: 'Cinnamon'
       },
       {
-        name: 'Lithium Battery 48V 100Ah',
-        price: 180000,
-        buying_price: 165000,
-        category_id: categoryIds['Batteries'],
+        name: 'Chocolate Cake Slice',
+        price: 450,
+        buying_price: 180,
+        category_id: categoryIds['Cakes'],
+        stock: 20,
+        sku: 'CAK-CHO-004',
+        unit_type: 'slice',
+        flavor: 'Chocolate'
+      },
+      {
+        name: 'Red Velvet Cupcake',
+        price: 260,
+        buying_price: 95,
+        category_id: categoryIds['Cakes'],
+        stock: 28,
+        sku: 'CAK-RVC-005',
+        unit_type: 'pcs',
+        flavor: 'Red Velvet'
+      },
+      {
+        name: 'Chocolate Chip Cookie',
+        price: 150,
+        buying_price: 45,
+        category_id: categoryIds['Cookies'],
+        stock: 60,
+        sku: 'CKI-CCK-006',
+        unit_type: 'pcs',
+        flavor: 'Chocolate Chip'
+      },
+      {
+        name: 'Oatmeal Cookie',
+        price: 140,
+        buying_price: 40,
+        category_id: categoryIds['Cookies'],
+        stock: 55,
+        sku: 'CKI-OAT-007',
+        unit_type: 'pcs',
+        flavor: 'Oatmeal'
+      },
+      {
+        name: 'Caffe Latte',
+        price: 200,
+        buying_price: 75,
+        category_id: categoryIds['Beverages'],
+        stock: 35,
+        sku: 'BEV-LAT-008',
+        unit_type: 'cup',
+        flavor: 'Milk Coffee'
+      },
+      {
+        name: 'Fresh Orange Juice',
+        price: 220,
+        buying_price: 90,
+        category_id: categoryIds['Beverages'],
         stock: 25,
-        sku: 'BAT-LIT-100',
-        unit_type: 'pcs',
-        flavor: 'Deep-Cycle'
-      },
-      {
-        name: 'Solar DC Cable 6mm',
-        price: 250,
-        buying_price: 200,
-        category_id: categoryIds['Accessories'],
-        stock: 500,
-        sku: 'ACC-CBL-6MM',
-        unit_type: 'liter', // generic unit type used in POS for length sometimes
-        flavor: 'Red/Black'
+        sku: 'BEV-JUI-009',
+        unit_type: 'glass',
+        flavor: 'Orange'
       }
     ];
 

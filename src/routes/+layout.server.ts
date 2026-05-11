@@ -1,9 +1,11 @@
 import type { LayoutServerLoad } from './$types';
 import { getSetting } from '$lib/server/pos';
+import { consumeFlashToast } from '$lib/server/flash-toast';
 
-export const load: LayoutServerLoad = async ({ locals }) => {
+export const load: LayoutServerLoad = async ({ locals, cookies }) => {
     let logoUrl: string | null = null;
-    let storeName: string | null = 'Satluj Solar';
+    let storeName: string | null = 'Bakery POS';
+    const flashToast = consumeFlashToast(cookies);
 
     try {
         const [logo, name] = await Promise.all([
@@ -11,7 +13,7 @@ export const load: LayoutServerLoad = async ({ locals }) => {
             getSetting('store_name')
         ]);
         logoUrl = logo;
-        storeName = name || 'Satluj Solar';
+        storeName = name || 'Bakery POS';
     } catch (error: any) {
         const message = error instanceof Error ? error.message : String(error);
         console.warn(`[Layout] Branding settings unavailable, continuing with defaults: ${message}`);
@@ -20,6 +22,7 @@ export const load: LayoutServerLoad = async ({ locals }) => {
     return {
         logoUrl,
         storeName,
-        username: locals.user || ''
+        username: locals.user || '',
+        flashToast
     };
 };

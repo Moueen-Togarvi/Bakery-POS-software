@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">Bakery POS Logo</title>
+  <desc id="desc">A bakery icon with wheat and a warm storefront badge.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fff7ed" />
+      <stop offset="100%" stop-color="#fde68a" />
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#d97706" />
+      <stop offset="100%" stop-color="#f59e0b" />
+    </linearGradient>
+  </defs>
+  <circle cx="128" cy="128" r="118" fill="url(#bg)" />
+  <path d="M74 166c0-30 24-54 54-54s54 24 54 54v12H74v-12Z" fill="#78350f" />
+  <path d="M92 110c0-20 16-36 36-36s36 16 36 36v12H92v-12Z" fill="url(#accent)" />
+  <path d="M96 166h64" fill="none" stroke="#fef3c7" stroke-width="10" stroke-linecap="round" />
+  <path d="M102 84c0 16-8 28-18 38" fill="none" stroke="#ca8a04" stroke-width="8" stroke-linecap="round" />
+  <path d="M120 72c0 20-8 38-22 52" fill="none" stroke="#a16207" stroke-width="8" stroke-linecap="round" />
+  <path d="M154 84c0 16 8 28 18 38" fill="none" stroke="#ca8a04" stroke-width="8" stroke-linecap="round" />
+  <path d="M136 72c0 20 8 38 22 52" fill="none" stroke="#a16207" stroke-width="8" stroke-linecap="round" />
+</svg>

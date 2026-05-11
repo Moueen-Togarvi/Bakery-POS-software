@@ -13,7 +13,7 @@ if (!DATABASE_URL) {
 const sql = neon(DATABASE_URL);
 
 async function seed() {
-    console.log('Seeding database with step-by-step logging...');
+    console.log('Seeding database with bakery sample data...');
 
     try {
         console.log('Step 1: Creating categories table...');
@@ -80,7 +80,7 @@ async function seed() {
         console.log('Cart items table created.');
 
         console.log('Step 5: Seeding categories...');
-        const categories = ['Breads', 'Pastries', 'Cakes', 'Beverages', 'Sandwiches'];
+        const categories = ['Breads', 'Pastries', 'Cakes', 'Cookies', 'Beverages'];
         for (const name of categories) {
             process.stdout.write(`  Inserting category ${name}... `);
             await (sql as any).query('INSERT INTO categories (name) VALUES ($1) ON CONFLICT (name) DO NOTHING', [name]);
@@ -107,7 +107,7 @@ async function seed() {
                 category: 'Breads'
             },
             {
-                name: 'Chocolate Cake',
+                name: 'Chocolate Cake Slice',
                 price: 450,
                 imageUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDqx6LTtqasWpNCcdh1avUsMr-v4tC9grpsu6a88rA-EhwougCh3jiFm4p9x8aukH233yw3DjSTrU0SUceMVxiv0JQUHii7qC2uiXfjE_UxUdyOGoEW6RQSqYDfS9pE440lRGHDcgvn_QyxlootOhTX9du_BWKAJeKamBFax6qhIMHSKdE8n4RPcQIdC_hMDAgWUcQeS8Fv0zw7Ou8sZYaDAoLidT4wa2uN4eNtSD8cLvdWKw5fHAB0YNrmStld5iZGldlz-2WDKTKJ',
                 category: 'Cakes'

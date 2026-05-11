@@ -1,7 +1,7 @@
 <script lang="ts">
   import { page } from '$app/stores';
 
-  let { logoUrl = '', storeName = 'Satluj Solar' } = $props();
+  let { logoUrl = '', storeName = 'hot&Cold' } = $props();
 
   const links = [
     { href: '/', label: 'Sales' },
@@ -26,7 +26,7 @@
       {#if logoUrl}
         <img src={logoUrl} alt="Logo" class="h-10 w-10 object-contain" />
       {:else}
-        <span class="material-symbols-outlined text-4xl text-secondary">solar_power</span>
+        <span class="material-symbols-outlined text-4xl text-secondary">bakery_dining</span>
       {/if}
       <h1 class="text-lg font-bold tracking-tight text-slate-900 md:text-xl">{storeName}</h1>
     </a>

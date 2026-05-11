@@ -1,6 +1,7 @@
 import type { PageServerLoad, Actions } from './$types';
 import { fail, redirect } from '@sveltejs/kit';
 import { getUsers } from '$lib/server/pos';
+import { setFlashToast } from '$lib/server/flash-toast';
 
 export const load: PageServerLoad = async ({ cookies }) => {
     const session = cookies.get('session');
@@ -39,6 +40,12 @@ export const actions: Actions = {
                 secure: false, // Set to true if using HTTPS, but false for local dev/testing
                 sameSite: 'lax',
                 // Session cookie: cleared when browser session ends
+            });
+
+            setFlashToast(cookies, {
+                type: 'success',
+                message: 'Login successful.',
+                subMessage: `Welcome back, ${user.username}.`
             });
 
             throw redirect(303, '/');

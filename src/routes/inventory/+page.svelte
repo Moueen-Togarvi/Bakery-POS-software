@@ -22,7 +22,7 @@
   };
 
   let { data } = $props();
-  const storeName = $derived(data.storeName ?? 'Satluj Solar');
+  const storeName = $derived(data.storeName ?? 'Bakery POS');
 
   let rows = $state<InventoryRow[]>(data.rows);
   let categories = $state<Category[]>(data.categories.filter((c) => c.id !== 0));
@@ -606,7 +606,7 @@
                 <div class="flex gap-2 mb-4">
                     <input
                         class="flex-1 rounded-lg border border-slate-200 px-3 py-1.5 focus:border-primary outline-none transition-all"
-                        placeholder="e.g. Solar Panels"
+                        placeholder="e.g. Pastries"
                         bind:value={categoryName}
                     />
                     <button class="rounded-lg bg-primary px-4 py-1.5 font-bold text-white text-xs hover:bg-primary-dark transition-colors inline-flex items-center gap-2" onclick={addCategory} disabled={busy}>

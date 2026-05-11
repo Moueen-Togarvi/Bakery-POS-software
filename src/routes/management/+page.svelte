@@ -7,7 +7,7 @@
   import { fade, fly } from 'svelte/transition';
 
   let { data, form } = $props();
-  const storeName = $derived(data.storeName ?? 'Satluj Solar');
+  const storeName = $derived(data.storeName ?? 'Bakery POS');
 
   let activeTab = $state<'staff' | 'finance'>('staff');
   let busy = $state(false);
@@ -21,6 +21,8 @@
   let editRole = $state<'admin' | 'cashier'>('cashier');
   let editSalary = $state(0);
   let editPassword = $state('');
+  let showNewUserPassword = $state(false);
+  let showEditPassword = $state(false);
   let modalBusy = $state(false);
   let modalMessage = $state('');
 
@@ -30,6 +32,7 @@
     editRole = user.role;
     editSalary = user.salary;
     editPassword = '';
+    showEditPassword = false;
     modalMessage = '';
     showEditModal = true;
   }
@@ -50,8 +53,10 @@
       const body = await res.json();
       if (!res.ok) {
         modalMessage = body.message ?? 'Update failed.';
+        toastStore.error(modalMessage);
         return;
       }
+      toastStore.success(`User "${editUsername}" updated successfully.`);
       showEditModal = false;
       await invalidateAll();
     } finally {
@@ -183,14 +188,52 @@
         <div class="rounded-2xl bg-white p-5 shadow-sm">
           <h2 class="text-xl font-bold text-slate-900 mb-2">Add Staff</h2>
           <p class="text-sm text-slate-500 mb-4">Create user credentials</p>
-          <form method="POST" action="?/upsertUser" use:enhance={() => { busy = true; return async ({ update }) => { busy = false; update(); }; }} class="space-y-4">
+          <form
+            method="POST"
+            action="?/upsertUser"
+            use:enhance={({ formElement }) => {
+              busy = true;
+              return async ({ result, update }) => {
+                busy = false;
+                await update();
+
+                if (result.type === 'success') {
+                  formElement.reset();
+                  showNewUserPassword = false;
+                  toastStore.success('Staff member saved successfully.');
+                  return;
+                }
+
+                if (result.type === 'failure') {
+                  toastStore.error((result.data as { message?: string } | undefined)?.message ?? 'Staff member save failed.');
+                }
+              };
+            }}
+            class="space-y-4"
+          >
             <div>
               <label class="block text-xs font-semibold text-slate-500 mb-1" for="username">Username</label>
               <input name="username" class="w-full rounded-lg border border-primary/20 px-3 py-2" placeholder="e.g. cashier1" required />
             </div>
             <div>
               <label class="block text-xs font-semibold text-slate-500 mb-1" for="password">Password (Mandatory) <span class="text-red-500">*</span></label>
-              <input name="password" type="password" class="w-full rounded-lg border border-primary/20 px-3 py-2 focus:border-primary focus:ring-1 focus:ring-primary outline-none" placeholder="••••••••" required />
+              <div class="relative">
+                <input
+                  name="password"
+                  type={showNewUserPassword ? 'text' : 'password'}
+                  class="w-full rounded-lg border border-primary/20 px-3 py-2 pr-11 focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                  placeholder="••••••••"
+                  required
+                />
+                <button
+                  type="button"
+                  class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition-colors hover:text-primary"
+                  aria-label={showNewUserPassword ? 'Hide password' : 'Show password'}
+                  onclick={() => (showNewUserPassword = !showNewUserPassword)}
+                >
+                  <span class="material-symbols-outlined text-[20px]">{showNewUserPassword ? 'visibility_off' : 'visibility'}</span>
+                </button>
+              </div>
             </div>
             <div>
               <label class="block text-xs font-semibold text-slate-500 mb-1" for="role">Role</label>
@@ -236,7 +279,28 @@
 
       <section class="lg:col-span-2 rounded-2xl bg-white p-5 shadow-sm">
         <h2 class="text-xl font-bold text-slate-900 mb-4">Log Transaction</h2>
-        <form method="POST" action="?/addExpense" use:enhance={() => { busy = true; return async ({ update }) => { busy = false; update(); }; }} class="space-y-4">
+        <form
+          method="POST"
+          action="?/addExpense"
+          use:enhance={({ formElement }) => {
+            busy = true;
+            return async ({ result, update }) => {
+              busy = false;
+              await update();
+
+              if (result.type === 'success') {
+                formElement.reset();
+                toastStore.success('Transaction recorded successfully.');
+                return;
+              }
+
+              if (result.type === 'failure') {
+                toastStore.error((result.data as { message?: string } | undefined)?.message ?? 'Transaction record failed.');
+              }
+            };
+          }}
+          class="space-y-4"
+        >
           <div class="grid grid-cols-2 gap-4">
             <div>
               <label class="block text-xs font-semibold text-slate-500 mb-1" for="category">Category</label>
@@ -307,7 +371,23 @@
           </div>
           <div>
             <label for="edit-user-password" class="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">New Password <span class="text-[10px] font-normal italic text-slate-400">(Leave blank to keep current)</span></label>
-            <input id="edit-user-password" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition-all focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/5" type="password" placeholder="••••••••" bind:value={editPassword} />
+            <div class="relative">
+              <input
+                id="edit-user-password"
+                class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 pr-12 text-sm outline-none transition-all focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/5"
+                type={showEditPassword ? 'text' : 'password'}
+                placeholder="••••••••"
+                bind:value={editPassword}
+              />
+              <button
+                type="button"
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition-colors hover:text-primary"
+                aria-label={showEditPassword ? 'Hide password' : 'Show password'}
+                onclick={() => (showEditPassword = !showEditPassword)}
+              >
+                <span class="material-symbols-outlined text-[20px]">{showEditPassword ? 'visibility_off' : 'visibility'}</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -353,4 +433,3 @@
     </div>
   </div>
 {/if}
-

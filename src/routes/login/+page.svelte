@@ -2,11 +2,18 @@
   import { enhance } from '$app/forms';
   import { page } from '$app/stores';
   import type { ActionData } from './$types';
+  import { toastStore } from '$lib/stores/toast.svelte';
 
   export let form: ActionData;
   let busy = false;
-  $: storeName = $page.data.storeName ?? 'Satluj Solar';
+  let showPassword = false;
+  let lastFormMessage = '';
+  $: storeName = $page.data.storeName ?? 'hot&Cold';
   $: logoUrl = $page.data.logoUrl ?? '';
+  $: if (form?.message && form.message !== lastFormMessage) {
+    lastFormMessage = form.message;
+    toastStore.error(form.message);
+  }
 </script>
 
 <svelte:head>
@@ -18,9 +25,9 @@
     <div class="text-center mb-8">
       <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 text-primary mb-4">
         {#if logoUrl && logoUrl.length > 0}
-          <img src={logoUrl} alt="Logo" class="h-14 w-14 object-contain" on:error={(e) => e.target.style.display = 'none'} />
+          <img src={logoUrl} alt="Logo" class="h-14 w-14 object-contain" onerror={(e) => ((e.currentTarget as HTMLImageElement).style.display = 'none')} />
         {/if}
-        <span class="material-symbols-outlined text-4xl" class:hidden={logoUrl && logoUrl.length > 0}>solar_power</span>
+        <span class="material-symbols-outlined text-4xl" class:hidden={logoUrl && logoUrl.length > 0}>bakery_dining</span>
       </div>
       <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">{storeName}</h1>
       <p class="text-slate-500 mt-1">Sign in to continue</p>
@@ -46,13 +53,23 @@
       
       <div>
         <label class="block text-sm font-bold text-slate-700 mb-1" for="password">Password</label>
-        <input 
-          name="password" 
-          type="password" 
-          required 
-          class="w-full rounded-xl border border-slate-200 px-4 py-3 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all"
-          placeholder="••••••••"
-        />
+        <div class="relative">
+          <input 
+            name="password" 
+            type={showPassword ? 'text' : 'password'}
+            required 
+            class="w-full rounded-xl border border-slate-200 px-4 py-3 pr-12 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+            placeholder="••••••••"
+          />
+          <button
+            type="button"
+            class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition-colors hover:text-primary"
+            aria-label={showPassword ? 'Hide password' : 'Show password'}
+            onclick={() => (showPassword = !showPassword)}
+          >
+            <span class="material-symbols-outlined text-[20px]">{showPassword ? 'visibility_off' : 'visibility'}</span>
+          </button>
+        </div>
         <p class="mt-2 text-xs text-slate-400">Default password for seeded accounts is <code>password123</code></p>
       </div>
 
