@@ -365,7 +365,7 @@
           <div>
             <label for="edit-user-salary" class="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">Monthly Salary</label>
             <div class="relative">
-                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">Rs.</span>
+                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">SAR</span>
                 <input id="edit-user-salary" class="w-full rounded-xl border border-slate-200 bg-slate-50 pl-12 pr-4 py-3 text-sm outline-none transition-all focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/5" type="number" bind:value={editSalary} />
             </div>
           </div>
